@@ -212,12 +212,12 @@ const FCNCalculator = () => {
 
             {/* FCN Parameters */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800">FCN Parameters</h3>
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">FCN Structure</h3>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Coupon Rate (%)
+                    Coupon Rate (% p.a.)
                   </label>
                   <input
                     type="number"
@@ -242,27 +242,82 @@ const FCNCalculator = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Maturity (Years)
+                    Maturity (Months)
                   </label>
                   <input
                     type="number"
-                    step="0.25"
-                    value={fcnParams.maturity_years}
-                    onChange={(e) => setFcnParams({...fcnParams, maturity_years: parseFloat(e.target.value)})}
+                    value={fcnParams.maturity_months}
+                    onChange={(e) => setFcnParams({...fcnParams, maturity_months: parseInt(e.target.value)})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Barrier Level (%)
+                    Strike Price ($)
                   </label>
                   <input
                     type="number"
-                    value={fcnParams.barrier_level}
-                    onChange={(e) => setFcnParams({...fcnParams, barrier_level: parseFloat(e.target.value)})}
+                    step="0.01"
+                    value={fcnParams.strike_price}
+                    onChange={(e) => setFcnParams({...fcnParams, strike_price: parseFloat(e.target.value)})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Knock-Out Barrier ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={fcnParams.knock_out_barrier}
+                    onChange={(e) => setFcnParams({...fcnParams, knock_out_barrier: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Early redemption trigger (usually above current price)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Knock-In Barrier ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={fcnParams.knock_in_barrier}
+                    onChange={(e) => setFcnParams({...fcnParams, knock_in_barrier: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Capital protection loss trigger (usually below current price)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Barrier Style
+                  </label>
+                  <select
+                    value={fcnParams.barrier_style}
+                    onChange={(e) => setFcnParams({...fcnParams, barrier_style: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="american">American (Continuous Monitoring)</option>
+                    <option value="european">European (Observation Dates Only)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="autocallable"
+                    checked={fcnParams.autocallable}
+                    onChange={(e) => setFcnParams({...fcnParams, autocallable: e.target.checked})}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="autocallable" className="ml-2 block text-sm text-gray-700">
+                    Autocallable (Early redemption on knock-out)
+                  </label>
                 </div>
               </div>
             </div>
