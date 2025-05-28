@@ -164,11 +164,19 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
         # Calculate payoffs
         payoffs = []
         for final_price in simulated_final_prices:
-            payoff = calculate_fcn_payoff(
-                final_price, initial_price, fcn_params.barrier_level,
-                fcn_params.coupon_rate, fcn_params.face_value
+            payoff_result = calculate_fcn_payoff(
+                final_price=final_price,
+                initial_price=initial_price,
+                strike_price=fcn_params.strike_price,
+                knock_out_barrier=fcn_params.knock_out_barrier,
+                knock_in_barrier=fcn_params.knock_in_barrier,
+                coupon_rate=fcn_params.coupon_rate,
+                face_value=fcn_params.face_value,
+                maturity_months=fcn_params.maturity_months,
+                barrier_breached={"knock_in": knock_in_occurred},
+                early_redemption_month=None
             )
-            payoffs.append(payoff)
+            payoffs.append(payoff_result["payoff"])
         
         results.append({
             'symbol': symbol,
