@@ -374,9 +374,9 @@ const FCNCalculator = () => {
             {analysis && (
               <>
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Portfolio Value</h4>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Face Value</h4>
                     <p className="text-3xl font-bold text-blue-600">
                       ${analysis.request_params.fcn_params.face_value.toLocaleString()}
                     </p>
@@ -385,14 +385,21 @@ const FCNCalculator = () => {
                   <div className="bg-white rounded-xl shadow-lg p-6">
                     <h4 className="text-lg font-semibold text-gray-800 mb-2">Coupon Rate</h4>
                     <p className="text-3xl font-bold text-green-600">
-                      {analysis.request_params.fcn_params.coupon_rate}%
+                      {analysis.request_params.fcn_params.coupon_rate}% p.a.
                     </p>
                   </div>
                   
                   <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Time to Maturity</h4>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Maturity</h4>
                     <p className="text-3xl font-bold text-purple-600">
-                      {analysis.request_params.fcn_params.maturity_years} years
+                      {analysis.request_params.fcn_params.maturity_months} months
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Barrier Style</h4>
+                    <p className="text-2xl font-bold text-orange-600 capitalize">
+                      {analysis.request_params.fcn_params.barrier_style}
                     </p>
                   </div>
                 </div>
