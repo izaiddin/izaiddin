@@ -364,35 +364,18 @@ async def analyze_fcn(request: FCNAnalysisRequest):
             )
             stocks_info.append(stock_info)
         
-        # Calculate FCN metrics
+        # Calculate FCN metrics for each stock
         fcn_metrics = {}
         for symbol in request.symbols:
             current_price = stock_prices[symbol].iloc[-1]
             
-            current_yield = calculate_current_yield(
-                request.fcn_params.coupon_rate, 
-                current_price, 
-                request.fcn_params.face_value
-            )
-            
-            ytm = calculate_yield_to_maturity(
-                request.fcn_params.coupon_rate,
-                current_price,
-                request.fcn_params.face_value,
-                request.fcn_params.maturity_years
-            )
-            
-            fcn_metrics[symbol] = {
-                "current_yield": current_yield,
-                "yield_to_maturity": ytm,
-                "barrier_price": current_price * (request.fcn_params.barrier_level / 100),
-                "distance_to_barrier": ((current_price - (current_price * request.fcn_params.barrier_level / 100)) / current_price) * 100
-            }
+            metrics = calculate_fcn_metrics(current_price, request.fcn_params)
+            fcn_metrics[symbol] = metrics
         
         # Monte Carlo simulation
         monte_carlo_results = monte_carlo_simulation(stock_prices, request.fcn_params)
         
-        # Scenario analysis
+        # Scenario analysis with proper FCN calculations
         scenario_analysis = {}
         for scenario_name, return_pct in request.scenarios.items():
             scenario_results = {}
@@ -400,18 +383,29 @@ async def analyze_fcn(request: FCNAnalysisRequest):
                 current_price = stock_prices[symbol].iloc[-1]
                 future_price = current_price * (1 + return_pct)
                 
-                payoff = calculate_fcn_payoff(
-                    future_price, 
-                    current_price, 
-                    request.fcn_params.barrier_level,
-                    request.fcn_params.coupon_rate, 
-                    request.fcn_params.face_value
+                # For scenario analysis, assume no early redemption
+                payoff_result = calculate_fcn_payoff(
+                    final_price=future_price,
+                    initial_price=current_price,
+                    strike_price=request.fcn_params.strike_price,
+                    knock_out_barrier=request.fcn_params.knock_out_barrier,
+                    knock_in_barrier=request.fcn_params.knock_in_barrier,
+                    coupon_rate=request.fcn_params.coupon_rate,
+                    face_value=request.fcn_params.face_value,
+                    maturity_months=request.fcn_params.maturity_months,
+                    barrier_breached={
+                        "knock_in": future_price <= request.fcn_params.knock_in_barrier,
+                        "knock_out": future_price >= request.fcn_params.knock_out_barrier
+                    },
+                    early_redemption_month=None
                 )
                 
                 scenario_results[symbol] = {
                     "future_price": future_price,
-                    "payoff": payoff,
-                    "return_pct": ((payoff / request.fcn_params.face_value) - 1) * 100
+                    "payoff": payoff_result["payoff"],
+                    "total_return": payoff_result["total_return"],
+                    "coupons_received": payoff_result["coupons_received"],
+                    "redemption_type": payoff_result["redemption_type"]
                 }
             
             scenario_analysis[scenario_name] = scenario_results
