@@ -492,12 +492,29 @@ const FCNCalculator = () => {
                           {scenarioName.replace('_', ' ')}
                         </h4>
                         {Object.entries(scenarioData).map(([symbol, data]) => (
-                          <div key={symbol} className="flex justify-between mb-2">
-                            <span className="text-sm text-gray-600">{symbol}:</span>
-                            <div className="text-right">
-                              <div className="text-sm font-semibold">${data.payoff.toFixed(2)}</div>
-                              <div className={`text-xs ${data.return_pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {data.return_pct >= 0 ? '+' : ''}{data.return_pct.toFixed(2)}%
+                          <div key={symbol} className="mb-4 p-3 bg-white rounded border">
+                            <div className="font-semibold text-blue-600 mb-2">{symbol}</div>
+                            <div className="text-sm space-y-1">
+                              <div className="flex justify-between">
+                                <span>Future Price:</span>
+                                <span>${data.future_price.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Total Payoff:</span>
+                                <span className="font-semibold">${data.payoff.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Total Return:</span>
+                                <span className={`font-semibold ${data.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {data.total_return >= 0 ? '+' : ''}{data.total_return.toFixed(2)}%
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Coupons:</span>
+                                <span>${data.coupons_received.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-gray-600 mt-2">
+                                Type: {data.redemption_type.replace('_', ' ')}
                               </div>
                             </div>
                           </div>
