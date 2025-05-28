@@ -1,54 +1,491 @@
-import { useEffect } from "react";
-import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
+const FCNCalculator = () => {
+  const [symbols, setSymbols] = useState(['AAPL']);
+  const [newSymbol, setNewSymbol] = useState('');
+  const [fcnParams, setFcnParams] = useState({
+    coupon_rate: 5.5,
+    face_value: 100000,
+    maturity_years: 1,
+    barrier_level: 70,
+    observation_frequency: 'daily'
+  });
+  const [scenarios, setScenarios] = useState({
+    base_case: 0.0,
+    bull_case: 0.15,
+    bear_case: -0.20
+  });
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [stockInfo, setStockInfo] = useState({});
+  const [error, setError] = useState('');
+  const [analyses, setAnalyses] = useState([]);
+
+  useEffect(() => {
+    loadRecentAnalyses();
+  }, []);
+
+  const loadRecentAnalyses = async () => {
     try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+      const response = await axios.get(`${API}/analyses`);
+      setAnalyses(response.data);
+    } catch (err) {
+      console.error('Error loading analyses:', err);
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  const addSymbol = () => {
+    if (newSymbol && !symbols.includes(newSymbol.toUpperCase())) {
+      setSymbols([...symbols, newSymbol.toUpperCase()]);
+      setNewSymbol('');
+      fetchStockInfo(newSymbol.toUpperCase());
+    }
+  };
+
+  const removeSymbol = (symbolToRemove) => {
+    setSymbols(symbols.filter(symbol => symbol !== symbolToRemove));
+    const newStockInfo = { ...stockInfo };
+    delete newStockInfo[symbolToRemove];
+    setStockInfo(newStockInfo);
+  };
+
+  const fetchStockInfo = async (symbol) => {
+    try {
+      const response = await axios.get(`${API}/stock/${symbol}`);
+      setStockInfo(prev => ({
+        ...prev,
+        [symbol]: response.data
+      }));
+    } catch (err) {
+      console.error(`Error fetching info for ${symbol}:`, err);
+    }
+  };
+
+  const runAnalysis = async () => {
+    if (symbols.length === 0) {
+      setError('Please add at least one stock symbol');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    
+    try {
+      const analysisRequest = {
+        symbols,
+        fcn_params: fcnParams,
+        analysis_period: 252,
+        scenarios
+      };
+
+      const response = await axios.post(`${API}/analyze`, analysisRequest);
+      setAnalysis(response.data);
+      loadRecentAnalyses();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Analysis failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAnalysis = async (analysisId) => {
+    try {
+      const response = await axios.get(`${API}/analysis/${analysisId}`);
+      setAnalysis(response.data);
+      setSymbols(response.data.request_params.symbols);
+      setFcnParams(response.data.request_params.fcn_params);
+      setScenarios(response.data.request_params.scenarios);
+    } catch (err) {
+      setError('Error loading analysis');
+    }
+  };
+
+  const generateReport = async (reportType) => {
+    if (!analysis) return;
+
+    try {
+      const response = await axios.post(`${API}/generate-report`, {
+        analysis_id: analysis.id,
+        report_type: reportType,
+        include_charts: true
+      });
+
+      // Create download link
+      const downloadUrl = `${API}/download/${response.data.filename}`;
+      window.open(downloadUrl, '_blank');
+    } catch (err) {
+      setError('Error generating report');
+    }
+  };
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            FCN Investment Analysis Calculator
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Professional Fixed Coupon Notes analysis for informed investment decisions
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Input Panel */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Stock Selection */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">Underlying Stocks</h3>
+              
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={newSymbol}
+                  onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
+                  placeholder="Enter symbol (e.g., AAPL)"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && addSymbol()}
+                />
+                <button
+                  onClick={addSymbol}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {symbols.map(symbol => (
+                  <div key={symbol} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <span className="font-semibold text-gray-800">{symbol}</span>
+                      {stockInfo[symbol] && (
+                        <div className="text-sm text-gray-600">
+                          ${stockInfo[symbol].current_price?.toFixed(2)} | {stockInfo[symbol].name}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removeSymbol(symbol)}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* FCN Parameters */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">FCN Parameters</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Coupon Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={fcnParams.coupon_rate}
+                    onChange={(e) => setFcnParams({...fcnParams, coupon_rate: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Face Value ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={fcnParams.face_value}
+                    onChange={(e) => setFcnParams({...fcnParams, face_value: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Maturity (Years)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    value={fcnParams.maturity_years}
+                    onChange={(e) => setFcnParams({...fcnParams, maturity_years: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Barrier Level (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={fcnParams.barrier_level}
+                    onChange={(e) => setFcnParams({...fcnParams, barrier_level: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Scenario Parameters */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">Scenario Analysis</h3>
+              
+              <div className="space-y-4">
+                {Object.entries(scenarios).map(([scenarioName, value]) => (
+                  <div key={scenarioName}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {scenarioName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={value * 100}
+                      onChange={(e) => setScenarios({
+                        ...scenarios,
+                        [scenarioName]: parseFloat(e.target.value) / 100
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={runAnalysis}
+              disabled={loading || symbols.length === 0}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Analyzing...
+                </div>
+              ) : (
+                'Run FCN Analysis'
+              )}
+            </button>
+          </div>
+
+          {/* Results Panel */}
+          <div className="lg:col-span-2 space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {analysis && (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Portfolio Value</h4>
+                    <p className="text-3xl font-bold text-blue-600">
+                      ${analysis.request_params.fcn_params.face_value.toLocaleString()}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Coupon Rate</h4>
+                    <p className="text-3xl font-bold text-green-600">
+                      {analysis.request_params.fcn_params.coupon_rate}%
+                    </p>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Time to Maturity</h4>
+                    <p className="text-3xl font-bold text-purple-600">
+                      {analysis.request_params.fcn_params.maturity_years} years
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stock Information */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Stock Analysis</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full table-auto">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Symbol</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Price</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Yield</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">YTM</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Distance to Barrier</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysis.stocks_info.map((stock, index) => (
+                          <tr key={stock.symbol} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="px-4 py-3 font-semibold text-blue-600">{stock.symbol}</td>
+                            <td className="px-4 py-3">${stock.current_price.toFixed(2)}</td>
+                            <td className="px-4 py-3">{analysis.fcn_metrics[stock.symbol]?.current_yield.toFixed(2)}%</td>
+                            <td className="px-4 py-3">{analysis.fcn_metrics[stock.symbol]?.yield_to_maturity.toFixed(2)}%</td>
+                            <td className="px-4 py-3 font-semibold">
+                              <span className={analysis.fcn_metrics[stock.symbol]?.distance_to_barrier > 20 ? 'text-green-600' : 'text-orange-600'}>
+                                {analysis.fcn_metrics[stock.symbol]?.distance_to_barrier.toFixed(2)}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Risk Metrics */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Risk Analysis</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full table-auto">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Symbol</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Volatility</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-in Probability</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Expected Payoff</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">VaR 95%</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(analysis.risk_metrics).map(([symbol, risk], index) => (
+                          <tr key={symbol} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="px-4 py-3 font-semibold text-blue-600">{symbol}</td>
+                            <td className="px-4 py-3">{risk.volatility_annualized.toFixed(2)}%</td>
+                            <td className="px-4 py-3">
+                              <span className={risk.knock_in_probability < 20 ? 'text-green-600' : 'text-red-600'}>
+                                {risk.knock_in_probability.toFixed(2)}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">${risk.expected_payoff.toFixed(2)}</td>
+                            <td className="px-4 py-3">${risk.var_95.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Scenario Analysis */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Scenario Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {Object.entries(analysis.scenario_analysis).map(([scenarioName, scenarioData]) => (
+                      <div key={scenarioName} className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-800 mb-3 capitalize">
+                          {scenarioName.replace('_', ' ')}
+                        </h4>
+                        {Object.entries(scenarioData).map(([symbol, data]) => (
+                          <div key={symbol} className="flex justify-between mb-2">
+                            <span className="text-sm text-gray-600">{symbol}:</span>
+                            <div className="text-right">
+                              <div className="text-sm font-semibold">${data.payoff.toFixed(2)}</div>
+                              <div className={`text-xs ${data.return_pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {data.return_pct >= 0 ? '+' : ''}{data.return_pct.toFixed(2)}%
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Charts */}
+                {analysis.charts && (
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h3 className="text-xl font-semibold mb-4 text-gray-800">Market Analysis</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {analysis.charts.price_history && (
+                        <div>
+                          <h4 className="font-semibold text-gray-700 mb-2">Price History</h4>
+                          <img 
+                            src={`data:image/png;base64,${analysis.charts.price_history}`} 
+                            alt="Price History"
+                            className="w-full rounded-lg shadow-sm"
+                          />
+                        </div>
+                      )}
+                      {analysis.charts.payoff_distribution && (
+                        <div>
+                          <h4 className="font-semibold text-gray-700 mb-2">Payoff Distribution</h4>
+                          <img 
+                            src={`data:image/png;base64,${analysis.charts.payoff_distribution}`} 
+                            alt="Payoff Distribution"
+                            className="w-full rounded-lg shadow-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Report Generation */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Generate Reports</h3>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => generateReport('excel')}
+                      className="flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      📊 Download Excel Report
+                    </button>
+                    <button
+                      onClick={() => generateReport('powerpoint')}
+                      className="flex-1 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      📈 Download PowerPoint
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Recent Analyses */}
+            {analyses.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Recent Analyses</h3>
+                <div className="space-y-2">
+                  {analyses.map(item => (
+                    <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          {item.symbols.join(', ')}
+                        </span>
+                        <div className="text-sm text-gray-600">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => loadAnalysis(item.id)}
+                        className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        Load
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
-  );
-}
-
-export default App;
+export default FCNCalculator;
