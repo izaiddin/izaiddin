@@ -11,9 +11,13 @@ const FCNCalculator = () => {
   const [fcnParams, setFcnParams] = useState({
     coupon_rate: 5.5,
     face_value: 100000,
-    maturity_years: 1,
-    barrier_level: 70,
-    observation_frequency: 'daily'
+    maturity_months: 12,
+    strike_price: 0, // Will be set to current market price
+    knock_out_barrier: 0, // Will be set to 110% of current price
+    knock_in_barrier: 0, // Will be set to 70% of current price
+    barrier_style: 'american',
+    observation_frequency: 'monthly',
+    autocallable: true
   });
   const [scenarios, setScenarios] = useState({
     base_case: 0.0,
