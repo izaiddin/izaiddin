@@ -124,6 +124,34 @@ def calculate_yield_to_maturity(coupon_rate: float, current_price: float, face_v
     
     return (numerator / denominator) * 100
 
+def calculate_fcn_metrics(current_price: float, fcn_params: FCNParameters) -> Dict[str, float]:
+    """Calculate FCN-specific metrics"""
+    
+    # Distance to barriers
+    distance_to_knockout = ((fcn_params.knock_out_barrier - current_price) / current_price) * 100
+    distance_to_knockin = ((current_price - fcn_params.knock_in_barrier) / current_price) * 100
+    
+    # Moneyness relative to strike
+    moneyness = (current_price / fcn_params.strike_price - 1) * 100
+    
+    # Annual coupon yield
+    annual_coupon = fcn_params.face_value * (fcn_params.coupon_rate / 100)
+    current_yield = (annual_coupon / fcn_params.face_value) * 100
+    
+    # Maximum return if held to maturity (no knock-in)
+    max_return = (fcn_params.coupon_rate / 12) * fcn_params.maturity_months
+    
+    return {
+        "current_yield": current_yield,
+        "distance_to_knockout": distance_to_knockout,
+        "distance_to_knockin": distance_to_knockin,
+        "moneyness": moneyness,
+        "max_return_no_knockin": max_return,
+        "knockout_barrier": fcn_params.knock_out_barrier,
+        "knockin_barrier": fcn_params.knock_in_barrier,
+        "monthly_coupon": fcn_params.face_value * (fcn_params.coupon_rate / 100) / 12
+    }
+
 def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters, 
                           num_simulations: int = 10000) -> Dict[str, Any]:
     """Run Monte Carlo simulation for FCN analysis with proper barrier monitoring"""
