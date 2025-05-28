@@ -452,9 +452,10 @@ const FCNCalculator = () => {
                         <tr className="bg-gray-50">
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Symbol</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Volatility</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-in Probability</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-out Prob</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-in Prob</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Expected Payoff</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">VaR 95%</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Avg Redemption</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -463,12 +464,17 @@ const FCNCalculator = () => {
                             <td className="px-4 py-3 font-semibold text-blue-600">{symbol}</td>
                             <td className="px-4 py-3">{risk.volatility_annualized.toFixed(2)}%</td>
                             <td className="px-4 py-3">
+                              <span className={risk.knock_out_probability > 30 ? 'text-green-600' : 'text-orange-600'}>
+                                {risk.knock_out_probability.toFixed(2)}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
                               <span className={risk.knock_in_probability < 20 ? 'text-green-600' : 'text-red-600'}>
                                 {risk.knock_in_probability.toFixed(2)}%
                               </span>
                             </td>
                             <td className="px-4 py-3">${risk.expected_payoff.toFixed(2)}</td>
-                            <td className="px-4 py-3">${risk.var_95.toFixed(2)}</td>
+                            <td className="px-4 py-3">{risk.avg_redemption_month.toFixed(1)} months</td>
                           </tr>
                         ))}
                       </tbody>
