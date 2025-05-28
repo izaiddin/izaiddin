@@ -95,34 +95,48 @@ class ReportRequest(BaseModel):
     include_charts: bool = True
 
 # FCN Calculation Functions
-def calculate_fcn_payoff(final_price: float, initial_price: float, barrier_level: float, 
-                        coupon_rate: float, face_value: float) -> float:
-    """Calculate FCN payoff at maturity"""
-    barrier_price = initial_price * (barrier_level / 100)
+def calculate_fcn_payoff(final_price: float, initial_price: float, strike_price: float,
+                        knock_out_barrier: float, knock_in_barrier: float, 
+                        coupon_rate: float, face_value: float, maturity_months: int,
+                        barrier_breached: Dict[str, bool], early_redemption_month: Optional[int] = None) -> Dict[str, float]:
+    """Calculate FCN payoff based on proper FCN structure"""
     
-    if final_price >= barrier_price:
-        # No knock-in, return face value
-        return face_value
+    # Monthly coupon
+    monthly_coupon = face_value * (coupon_rate / 100) / 12
+    
+    if early_redemption_month:
+        # Early redemption due to knock-out
+        total_coupons = monthly_coupon * early_redemption_month
+        return {
+            "payoff": face_value + total_coupons,
+            "total_return": (face_value + total_coupons - face_value) / face_value * 100,
+            "coupons_received": total_coupons,
+            "redemption_type": "early_knockout"
+        }
+    
+    # Calculate total coupons for full term
+    total_coupons = monthly_coupon * maturity_months
+    
+    if not barrier_breached["knock_in"]:
+        # No knock-in occurred, receive face value + all coupons
+        return {
+            "payoff": face_value + total_coupons,
+            "total_return": (total_coupons) / face_value * 100,
+            "coupons_received": total_coupons,
+            "redemption_type": "full_term_protected"
+        }
     else:
-        # Knock-in occurred, return stock performance
-        performance = final_price / initial_price
-        return face_value * performance
-
-def calculate_current_yield(coupon_rate: float, current_price: float, face_value: float) -> float:
-    """Calculate current yield"""
-    annual_coupon = face_value * (coupon_rate / 100)
-    return (annual_coupon / current_price) * 100
-
-def calculate_yield_to_maturity(coupon_rate: float, current_price: float, face_value: float, 
-                               years_to_maturity: float) -> float:
-    """Calculate approximate yield to maturity"""
-    annual_coupon = face_value * (coupon_rate / 100)
-    
-    # Simplified YTM calculation
-    numerator = annual_coupon + ((face_value - current_price) / years_to_maturity)
-    denominator = (face_value + current_price) / 2
-    
-    return (numerator / denominator) * 100
+        # Knock-in occurred, equity exposure based on performance vs strike
+        equity_performance = final_price / strike_price
+        equity_payoff = face_value * equity_performance
+        
+        return {
+            "payoff": equity_payoff + total_coupons,
+            "total_return": (equity_payoff + total_coupons - face_value) / face_value * 100,
+            "coupons_received": total_coupons,
+            "equity_performance": (equity_performance - 1) * 100,
+            "redemption_type": "equity_exposure"
+        }
 
 def calculate_fcn_metrics(current_price: float, fcn_params: FCNParameters) -> Dict[str, float]:
     """Calculate FCN-specific metrics"""
