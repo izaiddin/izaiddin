@@ -61,9 +61,13 @@ class StockInfo(BaseModel):
 class FCNParameters(BaseModel):
     coupon_rate: float  # Annual coupon rate (e.g., 5.5 for 5.5%)
     face_value: float  # Face value of the note
-    maturity_years: float  # Years to maturity
-    barrier_level: float  # Knock-in barrier as percentage of initial price (e.g., 70 for 70%)
-    observation_frequency: str = "daily"  # daily, weekly, monthly
+    maturity_months: int  # Maturity in months (FCNs typically use monthly terms)
+    strike_price: float  # Strike price for payoff determination
+    knock_out_barrier: float  # Knock-out barrier (early redemption trigger, usually above current price)
+    knock_in_barrier: float  # Knock-in barrier (equity conversion trigger, usually below current price)
+    barrier_style: str = "american"  # "american" (continuous monitoring) or "european" (observation dates only)
+    observation_frequency: str = "monthly"  # monthly, weekly, daily
+    autocallable: bool = True  # Whether the note can be called early on knock-out
 
 class FCNAnalysisRequest(BaseModel):
     symbols: List[str]  # List of stock symbols
