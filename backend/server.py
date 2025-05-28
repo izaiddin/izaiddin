@@ -423,7 +423,11 @@ async def analyze_fcn(request: FCNAnalysisRequest):
                 "var_95": result['var_95'],
                 "var_99": result['var_99'],
                 "expected_payoff": result['expected_payoff'],
-                "knock_in_probability": result['knock_in_probability'] * 100
+                "knock_in_probability": result['knock_in_probability'],
+                "knock_out_probability": result['knock_out_probability'],
+                "avg_redemption_month": result['avg_redemption_month'],
+                "max_payoff": result['max_payoff'],
+                "min_payoff": result['min_payoff']
             }
         
         # Create charts
