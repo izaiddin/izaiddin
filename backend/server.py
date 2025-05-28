@@ -126,7 +126,7 @@ def calculate_yield_to_maturity(coupon_rate: float, current_price: float, face_v
 
 def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters, 
                           num_simulations: int = 10000) -> Dict[str, Any]:
-    """Run Monte Carlo simulation for FCN analysis"""
+    """Run Monte Carlo simulation for FCN analysis with proper barrier monitoring"""
     results = []
     
     for symbol in stock_prices.columns:
@@ -137,33 +137,48 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
         sigma = returns.std() * np.sqrt(252)  # Annualized volatility
         
         # Monte Carlo simulation
-        simulated_final_prices = []
-        knock_in_probabilities = []
+        payoffs = []
+        knock_in_events = 0
+        knock_out_events = 0
+        early_redemptions = []
         
-        for _ in range(num_simulations):
-            # Generate random price path
+        for sim in range(num_simulations):
+            # Generate price path for the FCN term
+            days = int(fcn_params.maturity_months * 21)  # Approximate trading days per month
             dt = 1/252  # Daily time step
-            days = int(fcn_params.maturity_years * 252)
             
             price_path = [initial_price]
+            knocked_in = False
+            knocked_out = False
+            redemption_month = None
+            
             for day in range(days):
                 random_shock = np.random.normal(0, 1)
                 price_change = mu * dt + sigma * np.sqrt(dt) * random_shock
                 new_price = price_path[-1] * np.exp(price_change)
                 price_path.append(new_price)
+                
+                # Check barriers based on style
+                current_month = int(day / 21) + 1  # Current month
+                
+                if fcn_params.barrier_style == "american" or (
+                    fcn_params.barrier_style == "european" and day % 21 == 0
+                ):
+                    # Check knock-out barrier
+                    if new_price >= fcn_params.knock_out_barrier and fcn_params.autocallable:
+                        knocked_out = True
+                        redemption_month = current_month
+                        knock_out_events += 1
+                        break
+                    
+                    # Check knock-in barrier
+                    if new_price <= fcn_params.knock_in_barrier:
+                        knocked_in = True
+                        knock_in_events += 1
             
             final_price = price_path[-1]
-            simulated_final_prices.append(final_price)
             
-            # Check for knock-in
-            barrier_price = initial_price * (fcn_params.barrier_level / 100)
-            min_price = min(price_path)
-            knock_in_occurred = min_price <= barrier_price
-            knock_in_probabilities.append(knock_in_occurred)
-        
-        # Calculate payoffs
-        payoffs = []
-        for final_price in simulated_final_prices:
+            # Calculate FCN payoff
             payoff_result = calculate_fcn_payoff(
                 final_price=final_price,
                 initial_price=initial_price,
@@ -173,19 +188,29 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
                 coupon_rate=fcn_params.coupon_rate,
                 face_value=fcn_params.face_value,
                 maturity_months=fcn_params.maturity_months,
-                barrier_breached={"knock_in": knock_in_occurred},
-                early_redemption_month=None
+                barrier_breached={"knock_in": knocked_in, "knock_out": knocked_out},
+                early_redemption_month=redemption_month
             )
+            
             payoffs.append(payoff_result["payoff"])
+            if redemption_month:
+                early_redemptions.append(redemption_month)
+        
+        # Calculate statistics
+        avg_redemption_month = np.mean(early_redemptions) if early_redemptions else fcn_params.maturity_months
         
         results.append({
             'symbol': symbol,
             'initial_price': initial_price,
             'expected_payoff': np.mean(payoffs),
             'payoff_std': np.std(payoffs),
-            'knock_in_probability': np.mean(knock_in_probabilities),
+            'knock_in_probability': knock_in_events / num_simulations * 100,
+            'knock_out_probability': knock_out_events / num_simulations * 100,
+            'avg_redemption_month': avg_redemption_month,
             'var_95': np.percentile(payoffs, 5),
-            'var_99': np.percentile(payoffs, 1)
+            'var_99': np.percentile(payoffs, 1),
+            'max_payoff': np.max(payoffs),
+            'min_payoff': np.min(payoffs)
         })
     
     return results
