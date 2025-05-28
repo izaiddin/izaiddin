@@ -406,16 +406,17 @@ const FCNCalculator = () => {
 
                 {/* Stock Information */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Stock Analysis</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">FCN Analysis</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full table-auto">
                       <thead>
                         <tr className="bg-gray-50">
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Symbol</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Price</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Yield</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">YTM</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Distance to Barrier</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Strike Price</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-Out</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-In</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Monthly Coupon</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -423,13 +424,18 @@ const FCNCalculator = () => {
                           <tr key={stock.symbol} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                             <td className="px-4 py-3 font-semibold text-blue-600">{stock.symbol}</td>
                             <td className="px-4 py-3">${stock.current_price.toFixed(2)}</td>
-                            <td className="px-4 py-3">{analysis.fcn_metrics[stock.symbol]?.current_yield.toFixed(2)}%</td>
-                            <td className="px-4 py-3">{analysis.fcn_metrics[stock.symbol]?.yield_to_maturity.toFixed(2)}%</td>
-                            <td className="px-4 py-3 font-semibold">
-                              <span className={analysis.fcn_metrics[stock.symbol]?.distance_to_barrier > 20 ? 'text-green-600' : 'text-orange-600'}>
-                                {analysis.fcn_metrics[stock.symbol]?.distance_to_barrier.toFixed(2)}%
+                            <td className="px-4 py-3">${analysis.request_params.fcn_params.strike_price.toFixed(2)}</td>
+                            <td className="px-4 py-3">
+                              <span className={stock.current_price < analysis.request_params.fcn_params.knock_out_barrier ? 'text-green-600' : 'text-red-600'}>
+                                ${analysis.request_params.fcn_params.knock_out_barrier.toFixed(2)}
                               </span>
                             </td>
+                            <td className="px-4 py-3">
+                              <span className={stock.current_price > analysis.request_params.fcn_params.knock_in_barrier ? 'text-green-600' : 'text-red-600'}>
+                                ${analysis.request_params.fcn_params.knock_in_barrier.toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">${analysis.fcn_metrics[stock.symbol]?.monthly_coupon?.toFixed(2) || 'N/A'}</td>
                           </tr>
                         ))}
                       </tbody>
