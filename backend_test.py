@@ -101,9 +101,10 @@ class FCNAPITester:
         print(f"  Coupon Rate: {fcn_params.get('coupon_rate')}%")
         print(f"  Face Value: ${fcn_params.get('face_value'):,.2f}")
         print(f"  Maturity: {fcn_params.get('maturity_months')} months")
+        print(f"  Reference Price: ${fcn_params.get('reference_price'):,.2f}")
         print(f"  Strike Price: ${fcn_params.get('strike_price'):,.2f}")
-        print(f"  Knock-Out Barrier: ${fcn_params.get('knock_out_barrier'):,.2f}")
-        print(f"  Knock-In Barrier: ${fcn_params.get('knock_in_barrier'):,.2f}")
+        print(f"  Knock-Out Barrier %: {fcn_params.get('knock_out_barrier_pct')}%")
+        print(f"  Knock-In Barrier %: {fcn_params.get('knock_in_barrier_pct')}%")
         print(f"  Barrier Style: {fcn_params.get('barrier_style')}")
         print(f"  Autocallable: {fcn_params.get('autocallable')}")
         
@@ -129,6 +130,10 @@ class FCNAPITester:
             currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
             
             print(f"  {symbol}:")
+            print(f"    Reference Price: {currency_symbol}{metrics.get('reference_price'):,.2f}")
+            print(f"    Knock-Out Barrier: {currency_symbol}{metrics.get('knockout_barrier'):,.2f} ({metrics.get('knockout_barrier_pct')}%)")
+            print(f"    Knock-In Barrier: {currency_symbol}{metrics.get('knockin_barrier'):,.2f} ({metrics.get('knockin_barrier_pct')}%)")
+            print(f"    Performance vs Reference: {metrics.get('performance_vs_reference'):,.2f}%")
             print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout'):,.2f}%")
             print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin'):,.2f}%")
             print(f"    Monthly Coupon: {currency_symbol}{metrics.get('monthly_coupon'):,.2f}")
@@ -246,15 +251,16 @@ def main():
             print(f"  Name: {response.get('name')}")
             print("")
     
-    # Test Case 1: US Market FCN Structure
-    print("\n🔍 Test Case 1: US Market FCN Structure")
+    # Test Case 1: Single US Stock with Reference Price
+    print("\n🔍 Test Case 1: Single US Stock with Reference Price")
     fcn_params_us = {
-        "coupon_rate": 5.5,
+        "coupon_rate": 6.0,
         "face_value": 100000,
         "maturity_months": 12,
-        "strike_price": 200.0,
-        "knock_out_barrier": 220.0,  # 110% of strike
-        "knock_in_barrier": 140.0,   # 70% of strike
+        "reference_price": 200.0,  # Fixed reference price
+        "strike_price": 200.0,     # Usually same as reference
+        "knock_out_barrier_pct": 110.0,  # 110% of reference = $220
+        "knock_in_barrier_pct": 70.0,    # 70% of reference = $140
         "barrier_style": "american",
         "observation_frequency": "monthly",
         "autocallable": True
@@ -262,31 +268,33 @@ def main():
     
     success_us, analysis_us = tester.test_analyze_fcn(["AAPL"], fcn_params_us)
     
-    # Test Case 2: HK Market FCN Structure
-    print("\n🔍 Test Case 2: HK Market FCN Structure")
+    # Test Case 2: HK Stock with Reference Price
+    print("\n🔍 Test Case 2: HK Stock with Reference Price")
     fcn_params_hk = {
         "coupon_rate": 6.0,
         "face_value": 1000000,
         "maturity_months": 12,
-        "strike_price": 400.0,
-        "knock_out_barrier": 440.0,
-        "knock_in_barrier": 280.0,
+        "reference_price": 500.0,  # Fixed reference price
+        "strike_price": 500.0,     # Usually same as reference
+        "knock_out_barrier_pct": 110.0,  # 110% of reference = HK$550
+        "knock_in_barrier_pct": 70.0,    # 70% of reference = HK$350
         "barrier_style": "american",
         "observation_frequency": "monthly",
         "autocallable": True
     }
     
-    success_hk, analysis_hk = tester.test_analyze_fcn(["0700.HK", "9988.HK"], fcn_params_hk)
+    success_hk, analysis_hk = tester.test_analyze_fcn(["0700.HK"], fcn_params_hk)
     
-    # Test Case 3: Mixed US/HK Portfolio
-    print("\n🔍 Test Case 3: Mixed US/HK Portfolio")
+    # Test Case 3: Mixed US/HK Portfolio with Reference Price
+    print("\n🔍 Test Case 3: Mixed US/HK Portfolio with Reference Price")
     fcn_params_mixed = {
         "coupon_rate": 5.8,
         "face_value": 500000,
         "maturity_months": 6,
-        "strike_price": 150.0,  # This will be relative to the first stock
-        "knock_out_barrier": 165.0,
-        "knock_in_barrier": 105.0,
+        "reference_price": 150.0,  # Fixed reference price
+        "strike_price": 150.0,     # Usually same as reference
+        "knock_out_barrier_pct": 110.0,  # 110% of reference = $165
+        "knock_in_barrier_pct": 70.0,    # 70% of reference = $105
         "barrier_style": "european",
         "observation_frequency": "monthly",
         "autocallable": True
@@ -294,26 +302,22 @@ def main():
     
     success_mixed, analysis_mixed = tester.test_analyze_fcn(["AAPL", "0700.HK"], fcn_params_mixed)
     
-    # Test Case 4: Edge Case - Dynamic Barriers Based on Current Prices
-    print("\n🔍 Test Case 4: Dynamic Barriers Based on Current Prices")
+    # Test Case 4: Different Reference and Strike Prices
+    print("\n🔍 Test Case 4: Different Reference and Strike Prices")
+    fcn_params_diff = {
+        "coupon_rate": 8.0,
+        "face_value": 750000,
+        "maturity_months": 3,
+        "reference_price": 180.0,  # Fixed reference price
+        "strike_price": 190.0,     # Different from reference price
+        "knock_out_barrier_pct": 105.0,  # 105% of reference = $189
+        "knock_in_barrier_pct": 95.0,    # 95% of reference = $171
+        "barrier_style": "american",
+        "observation_frequency": "daily",
+        "autocallable": True
+    }
     
-    # Get Tencent current price
-    _, tencent_info = tester.test_get_stock("0700.HK")
-    if tencent_info and 'current_price' in tencent_info:
-        current_price = tencent_info['current_price']
-        fcn_params_dynamic = {
-            "coupon_rate": 8.0,
-            "face_value": 750000,
-            "maturity_months": 3,
-            "strike_price": current_price,
-            "knock_out_barrier": current_price * 1.05,  # 105% of current price
-            "knock_in_barrier": current_price * 0.95,   # 95% of current price (close to current)
-            "barrier_style": "american",
-            "observation_frequency": "daily",
-            "autocallable": True
-        }
-        
-        success_dynamic, analysis_dynamic = tester.test_analyze_fcn(["0700.HK"], fcn_params_dynamic)
+    success_diff, analysis_diff = tester.test_analyze_fcn(["MSFT"], fcn_params_diff)
     
     # Test retrieving and listing analyses if any test succeeded
     if tester.analysis_id:
@@ -339,14 +343,15 @@ def main():
     # Test analysis with empty symbols
     tester.test_analyze_fcn([], fcn_params_us)
     
-    # Test with invalid barrier structure (knock_in_barrier > knock_out_barrier)
+    # Test with invalid barrier percentages (knock_in_barrier_pct > knock_out_barrier_pct)
     invalid_barriers_params = {
         "coupon_rate": 5.5,
         "face_value": 100000,
         "maturity_months": 12,
+        "reference_price": 200.0,
         "strike_price": 200.0,
-        "knock_out_barrier": 150.0,  # Lower than knock_in_barrier (invalid)
-        "knock_in_barrier": 180.0,   # Higher than knock_out_barrier (invalid)
+        "knock_out_barrier_pct": 75.0,  # Lower than knock_in_barrier_pct (invalid)
+        "knock_in_barrier_pct": 90.0,   # Higher than knock_out_barrier_pct (invalid)
         "barrier_style": "american",
         "observation_frequency": "monthly",
         "autocallable": True
