@@ -186,9 +186,13 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
     """Run Monte Carlo simulation for FCN analysis with proper barrier monitoring"""
     results = []
     
+    # Calculate actual barrier levels from reference price
+    knock_out_barrier = fcn_params.reference_price * (fcn_params.knock_out_barrier_pct / 100)
+    knock_in_barrier = fcn_params.reference_price * (fcn_params.knock_in_barrier_pct / 100)
+    
     for symbol in stock_prices.columns:
         returns = stock_prices[symbol].pct_change().dropna()
-        initial_price = stock_prices[symbol].iloc[-1]
+        initial_price = fcn_params.reference_price  # Use reference price as starting point
         
         mu = returns.mean() * 252  # Annualized return
         sigma = returns.std() * np.sqrt(252)  # Annualized volatility
@@ -222,14 +226,14 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
                     fcn_params.barrier_style == "european" and day % 21 == 0
                 ):
                     # Check knock-out barrier
-                    if new_price >= fcn_params.knock_out_barrier and fcn_params.autocallable:
+                    if new_price >= knock_out_barrier and fcn_params.autocallable:
                         knocked_out = True
                         redemption_month = current_month
                         knock_out_events += 1
                         break
                     
                     # Check knock-in barrier
-                    if new_price <= fcn_params.knock_in_barrier:
+                    if new_price <= knock_in_barrier:
                         knocked_in = True
                         knock_in_events += 1
             
@@ -238,10 +242,10 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
             # Calculate FCN payoff
             payoff_result = calculate_fcn_payoff(
                 final_price=final_price,
-                initial_price=initial_price,
+                reference_price=fcn_params.reference_price,
                 strike_price=fcn_params.strike_price,
-                knock_out_barrier=fcn_params.knock_out_barrier,
-                knock_in_barrier=fcn_params.knock_in_barrier,
+                knock_out_barrier_pct=fcn_params.knock_out_barrier_pct,
+                knock_in_barrier_pct=fcn_params.knock_in_barrier_pct,
                 coupon_rate=fcn_params.coupon_rate,
                 face_value=fcn_params.face_value,
                 maturity_months=fcn_params.maturity_months,
@@ -258,7 +262,7 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
         
         results.append({
             'symbol': symbol,
-            'initial_price': initial_price,
+            'reference_price': fcn_params.reference_price,
             'expected_payoff': np.mean(payoffs),
             'payoff_std': np.std(payoffs),
             'knock_in_probability': knock_in_events / num_simulations * 100,
