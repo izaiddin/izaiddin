@@ -166,11 +166,12 @@ def check_basket_barriers(current_prices: Dict[str, float], reference_prices: Di
     }
 
 def calculate_fcn_payoff(final_prices: Dict[str, float], reference_prices: Dict[str, float], 
-                        strike_prices: Dict[str, float], knock_out_barrier_pct: float, 
-                        knock_in_barrier_pct: float, coupon_rate: float, face_value: float, 
-                        maturity_months: int, barrier_breached: Dict[str, bool], 
-                        basket_type: str = "worst_of", early_redemption_month: Optional[int] = None) -> Dict[str, float]:
-    """Calculate FCN payoff based on basket structure with worst-of performance"""
+                        strike_prices: Dict[str, float], put_strike_prices: Dict[str, float],
+                        knock_out_barrier_pct: float, knock_in_barrier_pct: float, 
+                        coupon_rate: float, face_value: float, maturity_months: int, 
+                        barrier_breached: Dict[str, bool], basket_type: str = "worst_of", 
+                        early_redemption_month: Optional[int] = None) -> Dict[str, float]:
+    """Calculate FCN payoff based on basket structure with worst-of performance and put strikes"""
     
     # Monthly coupon
     monthly_coupon = face_value * (coupon_rate / 100) / 12
@@ -197,16 +198,18 @@ def calculate_fcn_payoff(final_prices: Dict[str, float], reference_prices: Dict[
             "redemption_type": "full_term_protected"
         }
     else:
-        # Knock-in occurred, equity exposure based on worst-performing stock
-        basket_perf = calculate_basket_performance(final_prices, strike_prices, basket_type)
+        # Knock-in occurred, equity exposure based on worst-performing stock vs its PUT STRIKE
+        basket_perf = calculate_basket_performance(final_prices, reference_prices, basket_type)
         
         if basket_type == "worst_of":
             worst_symbol = basket_perf["worst_symbol"]
-            worst_strike = strike_prices[worst_symbol]
+            put_strike = put_strike_prices[worst_symbol]
             worst_final = final_prices[worst_symbol]
-            equity_performance = worst_final / worst_strike
+            
+            # Use put strike for equity exposure calculation
+            equity_performance = worst_final / put_strike
         else:
-            # For other basket types, use average performance
+            # For other basket types, use average performance vs average put strike
             avg_performance = basket_perf["performance"] / 100 + 1  # Convert % to multiplier
             equity_performance = avg_performance
         
@@ -218,6 +221,7 @@ def calculate_fcn_payoff(final_prices: Dict[str, float], reference_prices: Dict[
             "coupons_received": total_coupons,
             "equity_performance": (equity_performance - 1) * 100,
             "worst_performer": basket_perf.get("worst_symbol", "N/A"),
+            "put_strike_used": put_strike_prices.get(basket_perf.get("worst_symbol", ""), 0),
             "redemption_type": "equity_exposure"
         }
 
