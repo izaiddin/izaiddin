@@ -558,10 +558,10 @@ const FCNCalculator = () => {
                         <tr className="bg-gray-50">
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Symbol</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Price</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Strike Price</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-Out</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-In</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Monthly Coupon</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Reference Price</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Performance vs Ref</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-Out ({analysis.request_params.fcn_params.knock_out_barrier_pct}%)</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-In ({analysis.request_params.fcn_params.knock_in_barrier_pct}%)</th>
                         </tr>
                       </thead>
                       <tbody>
