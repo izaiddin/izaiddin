@@ -81,12 +81,11 @@ const FCNCalculator = () => {
         }));
         
         // Auto-set FCN parameters based on market price (for first stock or if not set)
-        if (fcnParams.strike_price === 0 || symbols.length === 0) {
+        if (fcnParams.reference_price === 0 || symbols.length === 0) {
           setFcnParams(prev => ({
             ...prev,
-            strike_price: currentPrice,
-            knock_out_barrier: currentPrice * 1.10, // 110% of current price
-            knock_in_barrier: currentPrice * 0.70   // 70% of current price
+            reference_price: currentPrice,
+            strike_price: currentPrice  // Usually same as reference price
           }));
         }
       } catch (err) {
