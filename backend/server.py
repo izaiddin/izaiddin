@@ -97,15 +97,79 @@ class ReportRequest(BaseModel):
     include_charts: bool = True
 
 # FCN Calculation Functions
-def calculate_fcn_payoff(final_price: float, reference_price: float, strike_price: float,
-                        knock_out_barrier_pct: float, knock_in_barrier_pct: float, 
-                        coupon_rate: float, face_value: float, maturity_months: int,
-                        barrier_breached: Dict[str, bool], early_redemption_month: Optional[int] = None) -> Dict[str, float]:
-    """Calculate FCN payoff based on proper FCN structure with reference price"""
+def calculate_basket_performance(current_prices: Dict[str, float], reference_prices: Dict[str, float], 
+                                basket_type: str = "worst_of") -> Dict[str, float]:
+    """Calculate basket performance based on basket type (worst-of, best-of, average)"""
+    performances = {}
+    for symbol in current_prices.keys():
+        if symbol in reference_prices:
+            performances[symbol] = (current_prices[symbol] / reference_prices[symbol] - 1) * 100
     
-    # Calculate actual barrier levels from reference price
-    knock_out_barrier = reference_price * (knock_out_barrier_pct / 100)
-    knock_in_barrier = reference_price * (knock_in_barrier_pct / 100)
+    if basket_type == "worst_of":
+        worst_symbol = min(performances, key=performances.get)
+        return {
+            "performance": performances[worst_symbol],
+            "worst_symbol": worst_symbol,
+            "worst_performance": performances[worst_symbol],
+            "all_performances": performances
+        }
+    elif basket_type == "best_of":
+        best_symbol = max(performances, key=performances.get)
+        return {
+            "performance": performances[best_symbol],
+            "best_symbol": best_symbol,
+            "best_performance": performances[best_symbol],
+            "all_performances": performances
+        }
+    else:  # average
+        avg_performance = sum(performances.values()) / len(performances)
+        return {
+            "performance": avg_performance,
+            "average_performance": avg_performance,
+            "all_performances": performances
+        }
+
+def check_basket_barriers(current_prices: Dict[str, float], reference_prices: Dict[str, float],
+                         knock_out_barrier_pct: float, knock_in_barrier_pct: float) -> Dict[str, bool]:
+    """Check if any stock in the basket has breached barriers"""
+    knocked_out = False
+    knocked_in = False
+    barrier_events = {}
+    
+    for symbol, current_price in current_prices.items():
+        if symbol in reference_prices:
+            ref_price = reference_prices[symbol]
+            ko_barrier = ref_price * (knock_out_barrier_pct / 100)
+            ki_barrier = ref_price * (knock_in_barrier_pct / 100)
+            
+            stock_ko = current_price >= ko_barrier
+            stock_ki = current_price <= ki_barrier
+            
+            barrier_events[symbol] = {
+                "knocked_out": stock_ko,
+                "knocked_in": stock_ki,
+                "ko_barrier": ko_barrier,
+                "ki_barrier": ki_barrier
+            }
+            
+            # If ANY stock breaches barriers, the entire FCN is affected
+            if stock_ko:
+                knocked_out = True
+            if stock_ki:
+                knocked_in = True
+    
+    return {
+        "knocked_out": knocked_out,
+        "knocked_in": knocked_in,
+        "barrier_events": barrier_events
+    }
+
+def calculate_fcn_payoff(final_prices: Dict[str, float], reference_prices: Dict[str, float], 
+                        strike_prices: Dict[str, float], knock_out_barrier_pct: float, 
+                        knock_in_barrier_pct: float, coupon_rate: float, face_value: float, 
+                        maturity_months: int, barrier_breached: Dict[str, bool], 
+                        basket_type: str = "worst_of", early_redemption_month: Optional[int] = None) -> Dict[str, float]:
+    """Calculate FCN payoff based on basket structure with worst-of performance"""
     
     # Monthly coupon
     monthly_coupon = face_value * (coupon_rate / 100) / 12
@@ -132,8 +196,19 @@ def calculate_fcn_payoff(final_price: float, reference_price: float, strike_pric
             "redemption_type": "full_term_protected"
         }
     else:
-        # Knock-in occurred, equity exposure based on performance vs strike
-        equity_performance = final_price / strike_price
+        # Knock-in occurred, equity exposure based on worst-performing stock
+        basket_perf = calculate_basket_performance(final_prices, strike_prices, basket_type)
+        
+        if basket_type == "worst_of":
+            worst_symbol = basket_perf["worst_symbol"]
+            worst_strike = strike_prices[worst_symbol]
+            worst_final = final_prices[worst_symbol]
+            equity_performance = worst_final / worst_strike
+        else:
+            # For other basket types, use average performance
+            avg_performance = basket_perf["performance"] / 100 + 1  # Convert % to multiplier
+            equity_performance = avg_performance
+        
         equity_payoff = face_value * equity_performance
         
         return {
@@ -141,46 +216,61 @@ def calculate_fcn_payoff(final_price: float, reference_price: float, strike_pric
             "total_return": (equity_payoff + total_coupons - face_value) / face_value * 100,
             "coupons_received": total_coupons,
             "equity_performance": (equity_performance - 1) * 100,
+            "worst_performer": basket_perf.get("worst_symbol", "N/A"),
             "redemption_type": "equity_exposure"
         }
 
-def calculate_fcn_metrics(current_price: float, fcn_params: FCNParameters) -> Dict[str, float]:
-    """Calculate FCN-specific metrics based on reference price"""
+def calculate_fcn_metrics(current_prices: Dict[str, float], fcn_params: FCNParameters) -> Dict[str, Dict[str, float]]:
+    """Calculate FCN-specific metrics for basket structure"""
     
-    # Calculate actual barrier levels from reference price percentages
-    knock_out_barrier = fcn_params.reference_price * (fcn_params.knock_out_barrier_pct / 100)
-    knock_in_barrier = fcn_params.reference_price * (fcn_params.knock_in_barrier_pct / 100)
+    metrics = {}
     
-    # Distance to barriers from current price
-    distance_to_knockout = ((knock_out_barrier - current_price) / current_price) * 100
-    distance_to_knockin = ((current_price - knock_in_barrier) / current_price) * 100
+    # Calculate basket performance
+    basket_perf = calculate_basket_performance(current_prices, fcn_params.reference_prices, fcn_params.basket_type)
     
-    # Performance vs reference price
-    performance_vs_reference = (current_price / fcn_params.reference_price - 1) * 100
+    # Check barriers for all stocks
+    barrier_status = check_basket_barriers(
+        current_prices, fcn_params.reference_prices,
+        fcn_params.knock_out_barrier_pct, fcn_params.knock_in_barrier_pct
+    )
     
-    # Moneyness relative to strike
-    moneyness = (current_price / fcn_params.strike_price - 1) * 100
+    for symbol in current_prices.keys():
+        if symbol in fcn_params.reference_prices:
+            current_price = current_prices[symbol]
+            ref_price = fcn_params.reference_prices[symbol]
+            
+            # Calculate actual barrier levels
+            knock_out_barrier = ref_price * (fcn_params.knock_out_barrier_pct / 100)
+            knock_in_barrier = ref_price * (fcn_params.knock_in_barrier_pct / 100)
+            
+            # Distance to barriers from current price
+            distance_to_knockout = ((knock_out_barrier - current_price) / current_price) * 100
+            distance_to_knockin = ((current_price - knock_in_barrier) / current_price) * 100
+            
+            # Performance vs reference price
+            performance_vs_reference = (current_price / ref_price - 1) * 100
+            
+            # Moneyness relative to strike
+            strike_price = fcn_params.strike_prices.get(symbol, ref_price)
+            moneyness = (current_price / strike_price - 1) * 100
+            
+            metrics[symbol] = {
+                "current_yield": fcn_params.coupon_rate,
+                "distance_to_knockout": distance_to_knockout,
+                "distance_to_knockin": distance_to_knockin,
+                "performance_vs_reference": performance_vs_reference,
+                "moneyness": moneyness,
+                "reference_price": ref_price,
+                "knockout_barrier": knock_out_barrier,
+                "knockin_barrier": knock_in_barrier,
+                "knockout_barrier_pct": fcn_params.knock_out_barrier_pct,
+                "knockin_barrier_pct": fcn_params.knock_in_barrier_pct,
+                "monthly_coupon": fcn_params.face_value * (fcn_params.coupon_rate / 100) / 12 / len(current_prices),  # Split among basket
+                "is_worst_performer": symbol == basket_perf.get("worst_symbol", ""),
+                "basket_performance": basket_perf["performance"]
+            }
     
-    # Annual coupon yield
-    current_yield = fcn_params.coupon_rate
-    
-    # Maximum return if held to maturity (no knock-in)
-    max_return = (fcn_params.coupon_rate / 12) * fcn_params.maturity_months
-    
-    return {
-        "current_yield": current_yield,
-        "distance_to_knockout": distance_to_knockout,
-        "distance_to_knockin": distance_to_knockin,
-        "performance_vs_reference": performance_vs_reference,
-        "moneyness": moneyness,
-        "max_return_no_knockin": max_return,
-        "reference_price": fcn_params.reference_price,
-        "knockout_barrier": knock_out_barrier,
-        "knockin_barrier": knock_in_barrier,
-        "knockout_barrier_pct": fcn_params.knock_out_barrier_pct,
-        "knockin_barrier_pct": fcn_params.knock_in_barrier_pct,
-        "monthly_coupon": fcn_params.face_value * (fcn_params.coupon_rate / 100) / 12
-    }
+    return metrics
 
 def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters, 
                           num_simulations: int = 10000) -> Dict[str, Any]:
