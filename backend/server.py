@@ -666,7 +666,7 @@ async def list_analyses(limit: int = 20):
     return [{"id": a["id"], "created_at": a["created_at"], "symbols": a["request_params"]["symbols"]} for a in analyses]
 
 def create_excel_report(analysis: FCNAnalysisResult, file_path: Path):
-    """Create Excel report"""
+    """Create Excel report for FCN basket analysis"""
     wb = Workbook()
     
     # Summary sheet
@@ -678,13 +678,13 @@ def create_excel_report(analysis: FCNAnalysisResult, file_path: Path):
     header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
     
     # Title
-    ws_summary['A1'] = "FCN Investment Analysis Report"
+    ws_summary['A1'] = "FCN Basket Investment Analysis Report"
     ws_summary['A1'].font = Font(bold=True, size=16)
     ws_summary.merge_cells('A1:F1')
     
     # Analysis parameters
     row = 3
-    ws_summary[f'A{row}'] = "Analysis Parameters"
+    ws_summary[f'A{row}'] = "FCN Basket Parameters"
     ws_summary[f'A{row}'].font = header_font
     row += 1
     
@@ -696,18 +696,35 @@ def create_excel_report(analysis: FCNAnalysisResult, file_path: Path):
     ws_summary[f'B{row}'] = f"${params.face_value:,.2f}"
     row += 1
     ws_summary[f'A{row}'] = "Maturity:"
-    ws_summary[f'B{row}'] = f"{params.maturity_years} years"
+    ws_summary[f'B{row}'] = f"{params.maturity_months} months"
     row += 1
-    ws_summary[f'A{row}'] = "Barrier Level:"
-    ws_summary[f'B{row}'] = f"{params.barrier_level}%"
+    ws_summary[f'A{row}'] = "Basket Type:"
+    ws_summary[f'B{row}'] = f"{params.basket_type.replace('_', ' ').title()}"
+    row += 1
+    ws_summary[f'A{row}'] = "Knock-Out Barrier:"
+    ws_summary[f'B{row}'] = f"{params.knock_out_barrier_pct}%"
+    row += 1
+    ws_summary[f'A{row}'] = "Knock-In Barrier:"
+    ws_summary[f'B{row}'] = f"{params.knock_in_barrier_pct}%"
     row += 2
+    
+    # Reference prices
+    ws_summary[f'A{row}'] = "Reference Prices"
+    ws_summary[f'A{row}'].font = header_font
+    row += 1
+    
+    for symbol, price in params.reference_prices.items():
+        ws_summary[f'A{row}'] = f"{symbol}:"
+        ws_summary[f'B{row}'] = f"${price:,.2f}"
+        row += 1
+    row += 1
     
     # Stock information
     ws_summary[f'A{row}'] = "Underlying Stocks"
     ws_summary[f'A{row}'].font = header_font
     row += 1
     
-    headers = ["Symbol", "Name", "Current Price", "Market Cap", "P/E Ratio"]
+    headers = ["Symbol", "Name", "Current Price", "Market Cap", "P/E Ratio", "Exchange"]
     for col, header in enumerate(headers, 1):
         ws_summary.cell(row=row, column=col, value=header).font = Font(bold=True)
     row += 1
@@ -718,48 +735,54 @@ def create_excel_report(analysis: FCNAnalysisResult, file_path: Path):
         ws_summary.cell(row=row, column=3, value=f"${stock.current_price:.2f}")
         ws_summary.cell(row=row, column=4, value=stock.market_cap if stock.market_cap else "N/A")
         ws_summary.cell(row=row, column=5, value=stock.pe_ratio if stock.pe_ratio else "N/A")
+        ws_summary.cell(row=row, column=6, value=stock.exchange)
         row += 1
     
-    # FCN Metrics sheet
-    ws_metrics = wb.create_sheet("FCN Metrics")
+    # Basket Performance sheet
+    ws_basket = wb.create_sheet("Basket Performance")
     row = 1
-    ws_metrics[f'A{row}'] = "FCN Performance Metrics"
-    ws_metrics[f'A{row}'].font = Font(bold=True, size=14)
+    ws_basket[f'A{row}'] = "FCN Basket Performance Metrics"
+    ws_basket[f'A{row}'].font = Font(bold=True, size=14)
     row += 2
     
-    headers = ["Symbol", "Current Yield", "YTM", "Barrier Price", "Distance to Barrier"]
+    # Basket summary metrics
+    basket_metrics = analysis.risk_metrics.get('basket_metrics', {})
+    ws_basket[f'A{row}'] = "Expected Payoff:"
+    ws_basket[f'B{row}'] = f"${basket_metrics.get('expected_payoff', 0):.2f}"
+    row += 1
+    ws_basket[f'A{row}'] = "Knock-Out Probability:"
+    ws_basket[f'B{row}'] = f"{basket_metrics.get('knock_out_probability', 0):.2f}%"
+    row += 1
+    ws_basket[f'A{row}'] = "Knock-In Probability:"
+    ws_basket[f'B{row}'] = f"{basket_metrics.get('knock_in_probability', 0):.2f}%"
+    row += 1
+    ws_basket[f'A{row}'] = "Most Frequent Worst Performer:"
+    ws_basket[f'B{row}'] = basket_metrics.get('most_frequent_worst', 'N/A')
+    row += 2
+    
+    # Individual stock metrics
+    headers = ["Symbol", "Current Price", "Reference Price", "Performance vs Ref", "Worst Performer", "Volatility"]
     for col, header in enumerate(headers, 1):
-        ws_metrics.cell(row=row, column=col, value=header).font = Font(bold=True)
+        ws_basket.cell(row=row, column=col, value=header).font = Font(bold=True)
     row += 1
     
     for symbol, metrics in analysis.fcn_metrics.items():
-        ws_metrics.cell(row=row, column=1, value=symbol)
-        ws_metrics.cell(row=row, column=2, value=f"{metrics['current_yield']:.2f}%")
-        ws_metrics.cell(row=row, column=3, value=f"{metrics['yield_to_maturity']:.2f}%")
-        ws_metrics.cell(row=row, column=4, value=f"${metrics['barrier_price']:.2f}")
-        ws_metrics.cell(row=row, column=5, value=f"{metrics['distance_to_barrier']:.2f}%")
-        row += 1
-    
-    # Risk Analysis sheet
-    ws_risk = wb.create_sheet("Risk Analysis")
-    row = 1
-    ws_risk[f'A{row}'] = "Risk Metrics"
-    ws_risk[f'A{row}'].font = Font(bold=True, size=14)
-    row += 2
-    
-    headers = ["Symbol", "Volatility", "Sharpe Ratio", "Max Drawdown", "VaR 95%", "VaR 99%", "Knock-in Prob"]
-    for col, header in enumerate(headers, 1):
-        ws_risk.cell(row=row, column=col, value=header).font = Font(bold=True)
-    row += 1
-    
-    for symbol, risk in analysis.risk_metrics.items():
-        ws_risk.cell(row=row, column=1, value=symbol)
-        ws_risk.cell(row=row, column=2, value=f"{risk['volatility_annualized']:.2f}%")
-        ws_risk.cell(row=row, column=3, value=f"{risk['sharpe_ratio']:.2f}")
-        ws_risk.cell(row=row, column=4, value=f"{risk['max_drawdown']:.2f}%")
-        ws_risk.cell(row=row, column=5, value=f"${risk['var_95']:.2f}")
-        ws_risk.cell(row=row, column=6, value=f"${risk['var_99']:.2f}")
-        ws_risk.cell(row=row, column=7, value=f"{risk['knock_in_probability']:.2f}%")
+        ws_basket.cell(row=row, column=1, value=symbol)
+        
+        # Find stock info for current price
+        stock = next((s for s in analysis.stocks_info if s.symbol == symbol), None)
+        if stock:
+            ws_basket.cell(row=row, column=2, value=f"${stock.current_price:.2f}")
+        
+        ref_price = params.reference_prices.get(symbol, 0)
+        ws_basket.cell(row=row, column=3, value=f"${ref_price:.2f}")
+        ws_basket.cell(row=row, column=4, value=f"{metrics.get('performance_vs_reference', 0):.2f}%")
+        ws_basket.cell(row=row, column=5, value="YES" if metrics.get('is_worst_performer', False) else "NO")
+        
+        # Get volatility from risk metrics
+        risk_data = analysis.risk_metrics.get(symbol, {})
+        volatility = risk_data.get('volatility_annualized', 0)
+        ws_basket.cell(row=row, column=6, value=f"{volatility:.2f}%")
         row += 1
     
     wb.save(file_path)
