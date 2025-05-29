@@ -196,19 +196,39 @@ def main():
     # Test health check
     tester.test_health_check()
     
-    # Test stock info retrieval
-    test_symbols = ["AAPL", "MSFT", "GOOGL"]
-    stock_info_results = {}
+    # Test US stock info retrieval
+    print("\n🔍 Testing US Stock Info Retrieval")
+    us_test_symbols = ["AAPL", "MSFT", "GOOGL"]
+    us_stock_info_results = {}
     
-    for symbol in test_symbols:
+    for symbol in us_test_symbols:
         success, response = tester.test_get_stock(symbol)
         if success:
-            stock_info_results[symbol] = response
+            us_stock_info_results[symbol] = response
+            print(f"  Symbol: {symbol}")
             print(f"  Current Price: ${response.get('current_price'):,.2f}")
+            print(f"  Exchange: {response.get('exchange')}")
+            print(f"  Name: {response.get('name')}")
+            print("")
     
-    # Test Case 1: Normal FCN Structure (American Style)
-    print("\n🔍 Test Case 1: Normal FCN Structure (American Style)")
-    fcn_params_1 = {
+    # Test HK stock info retrieval
+    print("\n🔍 Testing HK Stock Info Retrieval")
+    hk_test_symbols = ["0700.HK", "9988.HK", "0005.HK"]
+    hk_stock_info_results = {}
+    
+    for symbol in hk_test_symbols:
+        success, response = tester.test_get_stock(symbol)
+        if success:
+            hk_stock_info_results[symbol] = response
+            print(f"  Symbol: {symbol}")
+            print(f"  Current Price: ${response.get('current_price'):,.2f}")
+            print(f"  Exchange: {response.get('exchange')}")
+            print(f"  Name: {response.get('name')}")
+            print("")
+    
+    # Test Case 1: US Market FCN Structure
+    print("\n🔍 Test Case 1: US Market FCN Structure")
+    fcn_params_us = {
         "coupon_rate": 5.5,
         "face_value": 100000,
         "maturity_months": 12,
@@ -220,34 +240,50 @@ def main():
         "autocallable": True
     }
     
-    success_1, analysis_1 = tester.test_analyze_fcn(["AAPL"], fcn_params_1)
+    success_us, analysis_us = tester.test_analyze_fcn(["AAPL"], fcn_params_us)
     
-    # Test Case 2: European Style FCN with Multiple Stocks
-    print("\n🔍 Test Case 2: European Style FCN with Multiple Stocks")
-    fcn_params_2 = {
+    # Test Case 2: HK Market FCN Structure
+    print("\n🔍 Test Case 2: HK Market FCN Structure")
+    fcn_params_hk = {
         "coupon_rate": 6.0,
-        "face_value": 50000,
-        "maturity_months": 6,
-        "strike_price": 300.0,
-        "knock_out_barrier": 330.0,  # 110% of strike
-        "knock_in_barrier": 210.0,   # 70% of strike
-        "barrier_style": "european",
+        "face_value": 1000000,
+        "maturity_months": 12,
+        "strike_price": 400.0,
+        "knock_out_barrier": 440.0,
+        "knock_in_barrier": 280.0,
+        "barrier_style": "american",
         "observation_frequency": "monthly",
-        "autocallable": False
+        "autocallable": True
     }
     
-    success_2, analysis_2 = tester.test_analyze_fcn(["MSFT", "GOOGL"], fcn_params_2)
+    success_hk, analysis_hk = tester.test_analyze_fcn(["0700.HK", "9988.HK"], fcn_params_hk)
     
-    # Test Case 3: Edge Case - Knock-in Barrier Close to Current Price
-    print("\n🔍 Test Case 3: Edge Case - Knock-in Barrier Close to Current Price")
+    # Test Case 3: Mixed US/HK Portfolio
+    print("\n🔍 Test Case 3: Mixed US/HK Portfolio")
+    fcn_params_mixed = {
+        "coupon_rate": 5.8,
+        "face_value": 500000,
+        "maturity_months": 6,
+        "strike_price": 150.0,  # This will be relative to the first stock
+        "knock_out_barrier": 165.0,
+        "knock_in_barrier": 105.0,
+        "barrier_style": "european",
+        "observation_frequency": "monthly",
+        "autocallable": True
+    }
     
-    # Get AAPL current price
-    _, aapl_info = tester.test_get_stock("AAPL")
-    if aapl_info and 'current_price' in aapl_info:
-        current_price = aapl_info['current_price']
-        fcn_params_3 = {
+    success_mixed, analysis_mixed = tester.test_analyze_fcn(["AAPL", "0700.HK"], fcn_params_mixed)
+    
+    # Test Case 4: Edge Case - Dynamic Barriers Based on Current Prices
+    print("\n🔍 Test Case 4: Dynamic Barriers Based on Current Prices")
+    
+    # Get Tencent current price
+    _, tencent_info = tester.test_get_stock("0700.HK")
+    if tencent_info and 'current_price' in tencent_info:
+        current_price = tencent_info['current_price']
+        fcn_params_dynamic = {
             "coupon_rate": 8.0,
-            "face_value": 75000,
+            "face_value": 750000,
             "maturity_months": 3,
             "strike_price": current_price,
             "knock_out_barrier": current_price * 1.05,  # 105% of current price
@@ -257,7 +293,7 @@ def main():
             "autocallable": True
         }
         
-        success_3, analysis_3 = tester.test_analyze_fcn(["AAPL"], fcn_params_3)
+        success_dynamic, analysis_dynamic = tester.test_analyze_fcn(["0700.HK"], fcn_params_dynamic)
     
     # Test retrieving and listing analyses if any test succeeded
     if tester.analysis_id:
@@ -277,8 +313,11 @@ def main():
     # Test with invalid stock symbol
     tester.test_get_stock("INVALID_SYMBOL")
     
+    # Test with invalid HK stock symbol format
+    tester.test_get_stock("700.HK")  # Missing leading zero
+    
     # Test analysis with empty symbols
-    tester.test_analyze_fcn([], fcn_params_1)
+    tester.test_analyze_fcn([], fcn_params_us)
     
     # Test with invalid barrier structure (knock_in_barrier > knock_out_barrier)
     invalid_barriers_params = {
@@ -293,7 +332,7 @@ def main():
         "autocallable": True
     }
     
-    tester.test_analyze_fcn(["AAPL"], invalid_barriers_params)
+    tester.test_analyze_fcn(["0700.HK"], invalid_barriers_params)
     
     # Print results
     print(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
