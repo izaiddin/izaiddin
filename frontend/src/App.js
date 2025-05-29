@@ -599,24 +599,38 @@ const FCNCalculator = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(analysis.risk_metrics).map(([symbol, risk], index) => (
-                          <tr key={symbol} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-4 py-3 font-semibold text-blue-600">{symbol}</td>
-                            <td className="px-4 py-3">{risk.volatility_annualized.toFixed(2)}%</td>
-                            <td className="px-4 py-3">
-                              <span className={risk.knock_out_probability > 30 ? 'text-green-600' : 'text-orange-600'}>
-                                {risk.knock_out_probability.toFixed(2)}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={risk.knock_in_probability < 20 ? 'text-green-600' : 'text-red-600'}>
-                                {risk.knock_in_probability.toFixed(2)}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">${risk.expected_payoff.toFixed(2)}</td>
-                            <td className="px-4 py-3">{risk.avg_redemption_month.toFixed(1)} months</td>
-                          </tr>
-                        ))}
+                        {Object.entries(analysis.risk_metrics).map(([symbol, risk], index) => {
+                          const stock = analysis.stocks_info.find(s => s.symbol === symbol);
+                          const currencySymbol = stock ? getCurrencySymbol(stock.exchange) : '$';
+                          
+                          return (
+                            <tr key={symbol} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-blue-600">{symbol}</span>
+                                  {stock && (
+                                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                                      {stock.exchange}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">{risk.volatility_annualized.toFixed(2)}%</td>
+                              <td className="px-4 py-3">
+                                <span className={risk.knock_out_probability > 30 ? 'text-green-600' : 'text-orange-600'}>
+                                  {risk.knock_out_probability.toFixed(2)}%
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={risk.knock_in_probability < 20 ? 'text-green-600' : 'text-red-600'}>
+                                  {risk.knock_in_probability.toFixed(2)}%
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">{currencySymbol}{risk.expected_payoff.toFixed(2)}</td>
+                              <td className="px-4 py-3">{risk.avg_redemption_month.toFixed(1)} months</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
