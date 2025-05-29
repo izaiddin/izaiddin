@@ -63,6 +63,42 @@ const FCNCalculator = () => {
     }
   };
 
+  const addPopularStock = async (stockSymbol) => {
+    if (!symbols.includes(stockSymbol)) {
+      const upperSymbol = stockSymbol.toUpperCase();
+      setSymbols([...symbols, upperSymbol]);
+      
+      // Fetch stock info and set FCN parameters
+      try {
+        const response = await axios.get(`${API}/stock/${upperSymbol}`);
+        const stockData = response.data;
+        const currentPrice = stockData.current_price;
+        
+        setStockInfo(prev => ({
+          ...prev,
+          [upperSymbol]: stockData
+        }));
+        
+        // Auto-set FCN parameters based on market price (for first stock or if not set)
+        if (fcnParams.strike_price === 0 || symbols.length === 0) {
+          setFcnParams(prev => ({
+            ...prev,
+            strike_price: currentPrice,
+            knock_out_barrier: currentPrice * 1.10, // 110% of current price
+            knock_in_barrier: currentPrice * 0.70   // 70% of current price
+          }));
+        }
+      } catch (err) {
+        console.error(`Error fetching info for ${upperSymbol}:`, err);
+      }
+    }
+  };
+
+  const getCurrencySymbol = (exchange) => {
+    if (exchange === 'HKG') return 'HK$';
+    return '$';
+  };
+
   const addSymbol = async () => {
     if (newSymbol && !symbols.includes(newSymbol.toUpperCase())) {
       const upperSymbol = newSymbol.toUpperCase();
