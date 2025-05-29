@@ -255,9 +255,11 @@ def calculate_fcn_metrics(current_prices: Dict[str, float], fcn_params: FCNParam
             # Performance vs reference price
             performance_vs_reference = (current_price / ref_price - 1) * 100
             
-            # Moneyness relative to strike
+            # Moneyness relative to strike and put strike
             strike_price = fcn_params.strike_prices.get(symbol, ref_price)
+            put_strike_price = fcn_params.put_strike_prices.get(symbol, ref_price)
             moneyness = (current_price / strike_price - 1) * 100
+            put_moneyness = (current_price / put_strike_price - 1) * 100
             
             metrics[symbol] = {
                 "current_yield": fcn_params.coupon_rate,
