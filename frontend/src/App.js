@@ -712,14 +712,14 @@ const FCNCalculator = () => {
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              {getCurrencySymbol(stock.exchange)}{stock.current_price.toFixed(2)}
+                              {getCurrencySymbol(stock.exchange)}{stock.current_price.toFixed(4)}
                             </td>
                             <td className="px-4 py-3">
-                              {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.reference_prices[stock.symbol]?.toFixed(2) || 'N/A'}
+                              {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.reference_prices[stock.symbol]?.toFixed(4) || 'N/A'}
                             </td>
                             <td className="px-4 py-3">
                               <span className={analysis.fcn_metrics[stock.symbol]?.performance_vs_reference >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {analysis.fcn_metrics[stock.symbol]?.performance_vs_reference >= 0 ? '+' : ''}{analysis.fcn_metrics[stock.symbol]?.performance_vs_reference?.toFixed(2) || 'N/A'}%
+                                {analysis.fcn_metrics[stock.symbol]?.performance_vs_reference >= 0 ? '+' : ''}{analysis.fcn_metrics[stock.symbol]?.performance_vs_reference?.toFixed(4) || 'N/A'}%
                               </span>
                             </td>
                             <td className="px-4 py-3">
