@@ -769,53 +769,56 @@ const FCNCalculator = () => {
 
                 {/* Scenario Analysis */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Scenario Analysis</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Basket Scenario Analysis</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {Object.entries(analysis.scenario_analysis).map(([scenarioName, scenarioData]) => (
                       <div key={scenarioName} className="bg-gray-50 rounded-lg p-4">
                         <h4 className="font-semibold text-gray-800 mb-3 capitalize">
                           {scenarioName.replace('_', ' ')}
                         </h4>
-                        {Object.entries(scenarioData).map(([symbol, data]) => {
-                          const stock = analysis.stocks_info.find(s => s.symbol === symbol);
-                          const currencySymbol = stock ? getCurrencySymbol(stock.exchange) : '$';
-                          
-                          return (
-                            <div key={symbol} className="mb-4 p-3 bg-white rounded border">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="font-semibold text-blue-600">{symbol}</span>
-                                {stock && (
-                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
-                                    {stock.exchange}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-sm space-y-1">
-                                <div className="flex justify-between">
-                                  <span>Future Price:</span>
-                                  <span>{currencySymbol}{data.future_price.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Total Payoff:</span>
-                                  <span className="font-semibold">{currencySymbol}{data.payoff.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Total Return:</span>
-                                  <span className={`font-semibold ${data.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {data.total_return >= 0 ? '+' : ''}{data.total_return.toFixed(2)}%
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Coupons:</span>
-                                  <span>{currencySymbol}{data.coupons_received.toFixed(2)}</span>
-                                </div>
-                                <div className="text-xs text-gray-600 mt-2">
-                                  Type: {data.redemption_type.replace('_', ' ')}
-                                </div>
-                              </div>
+                        
+                        {/* Basket Summary */}
+                        <div className="mb-4 p-3 bg-white rounded border-l-4 border-blue-500">
+                          <div className="text-sm font-semibold text-blue-800 mb-2">Basket Result</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between">
+                              <span>Performance:</span>
+                              <span className={`font-semibold ${scenarioData.basket_performance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {scenarioData.basket_performance >= 0 ? '+' : ''}{scenarioData.basket_performance?.toFixed(2) || 'N/A'}%
+                              </span>
                             </div>
-                          );
-                        })}
+                            <div className="flex justify-between">
+                              <span>Total Payoff:</span>
+                              <span className="font-semibold">${scenarioData.payoff?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Total Return:</span>
+                              <span className={`font-semibold ${scenarioData.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {scenarioData.total_return >= 0 ? '+' : ''}{scenarioData.total_return?.toFixed(2) || 'N/A'}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Worst Performer:</span>
+                              <span className="font-semibold text-red-600">{scenarioData.worst_performer || 'N/A'}</span>
+                            </div>
+                            <div className="text-xs text-gray-600 mt-2">
+                              Type: {scenarioData.redemption_type?.replace('_', ' ') || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Individual Stock Performances */}
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold text-gray-700 mb-1">Individual Performances:</div>
+                          {scenarioData.individual_performances && Object.entries(scenarioData.individual_performances).map(([symbol, performance]) => (
+                            <div key={symbol} className="flex justify-between text-sm p-2 bg-white rounded">
+                              <span className="font-medium">{symbol}:</span>
+                              <span className={`font-semibold ${performance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {performance >= 0 ? '+' : ''}{performance?.toFixed(2) || 'N/A'}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
