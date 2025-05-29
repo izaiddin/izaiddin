@@ -645,34 +645,46 @@ const FCNCalculator = () => {
                         <h4 className="font-semibold text-gray-800 mb-3 capitalize">
                           {scenarioName.replace('_', ' ')}
                         </h4>
-                        {Object.entries(scenarioData).map(([symbol, data]) => (
-                          <div key={symbol} className="mb-4 p-3 bg-white rounded border">
-                            <div className="font-semibold text-blue-600 mb-2">{symbol}</div>
-                            <div className="text-sm space-y-1">
-                              <div className="flex justify-between">
-                                <span>Future Price:</span>
-                                <span>${data.future_price.toFixed(2)}</span>
+                        {Object.entries(scenarioData).map(([symbol, data]) => {
+                          const stock = analysis.stocks_info.find(s => s.symbol === symbol);
+                          const currencySymbol = stock ? getCurrencySymbol(stock.exchange) : '$';
+                          
+                          return (
+                            <div key={symbol} className="mb-4 p-3 bg-white rounded border">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-semibold text-blue-600">{symbol}</span>
+                                {stock && (
+                                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                                    {stock.exchange}
+                                  </span>
+                                )}
                               </div>
-                              <div className="flex justify-between">
-                                <span>Total Payoff:</span>
-                                <span className="font-semibold">${data.payoff.toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Total Return:</span>
-                                <span className={`font-semibold ${data.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {data.total_return >= 0 ? '+' : ''}{data.total_return.toFixed(2)}%
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Coupons:</span>
-                                <span>${data.coupons_received.toFixed(2)}</span>
-                              </div>
-                              <div className="text-xs text-gray-600 mt-2">
-                                Type: {data.redemption_type.replace('_', ' ')}
+                              <div className="text-sm space-y-1">
+                                <div className="flex justify-between">
+                                  <span>Future Price:</span>
+                                  <span>{currencySymbol}{data.future_price.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Total Payoff:</span>
+                                  <span className="font-semibold">{currencySymbol}{data.payoff.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Total Return:</span>
+                                  <span className={`font-semibold ${data.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {data.total_return >= 0 ? '+' : ''}{data.total_return.toFixed(2)}%
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Coupons:</span>
+                                  <span>{currencySymbol}{data.coupons_received.toFixed(2)}</span>
+                                </div>
+                                <div className="text-xs text-gray-600 mt-2">
+                                  Type: {data.redemption_type.replace('_', ' ')}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
