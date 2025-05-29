@@ -34,6 +34,7 @@ const FCNCalculator = () => {
     maturity_months: 12,
     reference_prices: {}, // Will be populated when stocks are added
     strike_prices: {}, // Will be populated when stocks are added  
+    put_strike_prices: {}, // Put strike prices for equity conversion
     knock_out_barrier_pct: 110.0, // 110% of reference price
     knock_in_barrier_pct: 70.0, // 70% of reference price
     barrier_style: 'american',
