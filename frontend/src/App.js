@@ -554,16 +554,16 @@ const FCNCalculator = () => {
 
             <button
               onClick={runAnalysis}
-              disabled={loading || symbols.length === 0}
+              disabled={loading || symbols.length < 2}
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Analyzing...
+                  Analyzing Basket...
                 </div>
               ) : (
-                'Run FCN Analysis'
+                `Run FCN Basket Analysis ${symbols.length < 2 ? `(${2 - symbols.length} more stock${2 - symbols.length > 1 ? 's' : ''} needed)` : ''}`
               )}
             </button>
           </div>
