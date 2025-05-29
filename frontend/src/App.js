@@ -121,14 +121,18 @@ const FCNCalculator = () => {
           [upperSymbol]: stockData
         }));
         
-        // Auto-set FCN parameters based on market price (for first stock or if not set)
-        if (fcnParams.reference_price === 0 || symbols.length === 0) {
-          setFcnParams(prev => ({
-            ...prev,
-            reference_price: currentPrice,
-            strike_price: currentPrice  // Usually same as reference price
-          }));
-        }
+        // Auto-set FCN parameters for basket structure
+        setFcnParams(prev => ({
+          ...prev,
+          reference_prices: {
+            ...prev.reference_prices,
+            [upperSymbol]: currentPrice
+          },
+          strike_prices: {
+            ...prev.strike_prices,
+            [upperSymbol]: currentPrice  // Usually same as reference price
+          }
+        }));
       } catch (err) {
         console.error(`Error fetching info for ${upperSymbol}:`, err);
       }
