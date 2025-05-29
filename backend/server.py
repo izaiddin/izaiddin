@@ -423,28 +423,33 @@ def create_price_chart(stock_prices: pd.DataFrame) -> str:
     
     return image_base64
 
-def create_payoff_distribution_chart(monte_carlo_results: List[Dict]) -> str:
-    """Create payoff distribution chart"""
-    fig, axes = plt.subplots(len(monte_carlo_results), 1, figsize=(10, 6*len(monte_carlo_results)))
-    if len(monte_carlo_results) == 1:
-        axes = [axes]
+def create_payoff_distribution_chart(monte_carlo_results: Dict) -> str:
+    """Create payoff distribution chart for basket FCN"""
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
     
-    for i, result in enumerate(monte_carlo_results):
-        # This is simplified - in real implementation you'd store the full payoff distribution
-        ax = axes[i] if len(monte_carlo_results) > 1 else axes[0]
-        
-        # Create sample distribution for visualization
-        mean_payoff = result['expected_payoff']
-        std_payoff = result['payoff_std']
-        sample_payoffs = np.random.normal(mean_payoff, std_payoff, 1000)
-        
-        ax.hist(sample_payoffs, bins=50, alpha=0.7, edgecolor='black')
-        ax.axvline(mean_payoff, color='red', linestyle='--', linewidth=2, label=f'Mean: ${mean_payoff:.2f}')
-        ax.set_title(f'FCN Payoff Distribution - {result["symbol"]}', fontsize=14, fontweight='bold')
-        ax.set_xlabel('Payoff ($)', fontsize=12)
-        ax.set_ylabel('Frequency', fontsize=12)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
+    # Create sample distribution for visualization (simplified)
+    expected_payoff = monte_carlo_results['expected_payoff']
+    payoff_std = monte_carlo_results['payoff_std']
+    sample_payoffs = np.random.normal(expected_payoff, payoff_std, 1000)
+    
+    ax.hist(sample_payoffs, bins=50, alpha=0.7, edgecolor='black')
+    ax.axvline(expected_payoff, color='red', linestyle='--', linewidth=2, 
+               label=f'Expected: ${expected_payoff:.2f}')
+    ax.axvline(monte_carlo_results['var_95'], color='orange', linestyle='--', 
+               label=f'VaR 95%: ${monte_carlo_results["var_95"]:.2f}')
+    
+    ax.set_title(f'FCN Payoff Distribution - {monte_carlo_results["basket_type"].replace("_", " ").title()} Basket', 
+                fontsize=14, fontweight='bold')
+    ax.set_xlabel('Payoff ($)', fontsize=12)
+    ax.set_ylabel('Frequency', fontsize=12)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    # Add basket info
+    if monte_carlo_results.get('most_frequent_worst') != "N/A":
+        ax.text(0.02, 0.98, f'Most Frequent Worst Performer: {monte_carlo_results["most_frequent_worst"]}', 
+                transform=ax.transAxes, verticalalignment='top', 
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
     plt.tight_layout()
     
