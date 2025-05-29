@@ -734,10 +734,10 @@ const FCNCalculator = () => {
                             <td className="px-4 py-3">
                               <div className="text-xs">
                                 <div className="text-green-600">
-                                  KO: {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockout_barrier?.toFixed(2) || 'N/A'}
+                                  KO: {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockout_barrier?.toFixed(4) || 'N/A'}
                                 </div>
                                 <div className="text-red-600">
-                                  KI: {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockin_barrier?.toFixed(2) || 'N/A'}
+                                  KI: {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockin_barrier?.toFixed(4) || 'N/A'}
                                 </div>
                               </div>
                             </td>
