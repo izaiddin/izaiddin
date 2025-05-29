@@ -111,25 +111,40 @@ class FCNAPITester:
         stocks_info = analysis.get('stocks_info', [])
         print("\nStock Information:")
         for stock in stocks_info:
-            print(f"  {stock.get('symbol')}: ${stock.get('current_price'):,.2f}")
+            symbol = stock.get('symbol')
+            exchange = stock.get('exchange')
+            current_price = stock.get('current_price')
+            
+            # Determine currency symbol based on exchange
+            currency_symbol = 'HK$' if exchange == 'HKG' else '$'
+            
+            print(f"  {symbol} ({exchange}): {currency_symbol}{current_price:,.2f}")
         
         # Print FCN metrics
         fcn_metrics = analysis.get('fcn_metrics', {})
         print("\nFCN Metrics:")
         for symbol, metrics in fcn_metrics.items():
+            # Find the stock info for this symbol to get the exchange
+            stock = next((s for s in stocks_info if s.get('symbol') == symbol), None)
+            currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
+            
             print(f"  {symbol}:")
             print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout'):,.2f}%")
             print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin'):,.2f}%")
-            print(f"    Monthly Coupon: ${metrics.get('monthly_coupon'):,.2f}")
+            print(f"    Monthly Coupon: {currency_symbol}{metrics.get('monthly_coupon'):,.2f}")
         
         # Print risk metrics
         risk_metrics = analysis.get('risk_metrics', {})
         print("\nRisk Metrics:")
         for symbol, metrics in risk_metrics.items():
+            # Find the stock info for this symbol to get the exchange
+            stock = next((s for s in stocks_info if s.get('symbol') == symbol), None)
+            currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
+            
             print(f"  {symbol}:")
             print(f"    Knock-Out Probability: {metrics.get('knock_out_probability'):,.2f}%")
             print(f"    Knock-In Probability: {metrics.get('knock_in_probability'):,.2f}%")
-            print(f"    Expected Payoff: ${metrics.get('expected_payoff'):,.2f}")
+            print(f"    Expected Payoff: {currency_symbol}{metrics.get('expected_payoff'):,.2f}")
             print(f"    Avg Redemption Month: {metrics.get('avg_redemption_month'):,.2f}")
         
         # Print scenario analysis
@@ -138,8 +153,13 @@ class FCNAPITester:
         for scenario, data in scenario_analysis.items():
             print(f"  {scenario}:")
             for symbol, results in data.items():
-                print(f"    {symbol}: ${results.get('payoff'):,.2f} ({results.get('total_return'):+.2f}%)")
+                # Find the stock info for this symbol to get the exchange
+                stock = next((s for s in stocks_info if s.get('symbol') == symbol), None)
+                currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
+                
+                print(f"    {symbol}: {currency_symbol}{results.get('payoff'):,.2f} ({results.get('total_return'):+.2f}%)")
                 print(f"      Redemption Type: {results.get('redemption_type')}")
+                print(f"      Future Price: {currency_symbol}{results.get('future_price'):,.2f}")
 
     def test_get_analysis(self, analysis_id):
         """Test retrieving a saved analysis"""
