@@ -355,7 +355,7 @@ const FCNCalculator = () => {
                       </div>
                       {stockInfo[symbol] && (
                         <div className="text-sm text-gray-600">
-                          {getCurrencySymbol(stockInfo[symbol].exchange)}{stockInfo[symbol].current_price?.toFixed(2)} | {stockInfo[symbol].name}
+                          {getCurrencySymbol(stockInfo[symbol].exchange)}{stockInfo[symbol].current_price?.toFixed(4)} | {stockInfo[symbol].name}
                         </div>
                       )}
                     </div>
