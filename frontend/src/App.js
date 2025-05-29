@@ -144,6 +144,18 @@ const FCNCalculator = () => {
     const newStockInfo = { ...stockInfo };
     delete newStockInfo[symbolToRemove];
     setStockInfo(newStockInfo);
+    
+    // Remove from FCN parameters
+    const newReferencePrices = { ...fcnParams.reference_prices };
+    const newStrikePrices = { ...fcnParams.strike_prices };
+    delete newReferencePrices[symbolToRemove];
+    delete newStrikePrices[symbolToRemove];
+    
+    setFcnParams(prev => ({
+      ...prev,
+      reference_prices: newReferencePrices,
+      strike_prices: newStrikePrices
+    }));
   };
 
   const fetchStockInfo = async (symbol) => {
