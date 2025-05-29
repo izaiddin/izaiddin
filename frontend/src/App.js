@@ -445,7 +445,7 @@ const FCNCalculator = () => {
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
-                            step="0.01"
+                            step="0.0001"
                             value={fcnParams.reference_prices[symbol] || 0}
                             onChange={(e) => setFcnParams({
                               ...fcnParams,
@@ -454,7 +454,7 @@ const FCNCalculator = () => {
                                 [symbol]: parseFloat(e.target.value)
                               }
                             })}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="w-32 px-2 py-1 text-sm border border-gray-300 rounded"
                           />
                           <span className="text-xs text-gray-500">
                             {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}
