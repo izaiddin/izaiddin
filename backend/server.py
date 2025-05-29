@@ -702,8 +702,8 @@ async def get_analysis(analysis_id: str):
     return FCNAnalysisResult(**analysis)
 
 @api_router.get("/analyses")
-async def list_analyses(limit: int = 20):
-    """List recent analyses"""
+async def list_analyses(limit: int = 5):
+    """List recent analyses (limited to 5 by default)"""
     analyses = await db.fcn_analyses.find().sort("created_at", -1).limit(limit).to_list(limit)
     return [{"id": a["id"], "created_at": a["created_at"], "symbols": a["request_params"]["symbols"]} for a in analyses]
 
