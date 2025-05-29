@@ -87,6 +87,9 @@ class FCNAPITester:
         
         if success and response and 'id' in response:
             self.analysis_id = response['id']
+            # Print raw response for debugging
+            print("\n🔍 Raw API Response Structure:")
+            print(json.dumps(response.get('fcn_metrics', {}), indent=2))
             self.print_fcn_analysis_results(response)
             
         return success, response
