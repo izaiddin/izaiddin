@@ -579,20 +579,22 @@ const FCNCalculator = () => {
                               {getCurrencySymbol(stock.exchange)}{stock.current_price.toFixed(2)}
                             </td>
                             <td className="px-4 py-3">
-                              {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.strike_price.toFixed(2)}
+                              {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.reference_price.toFixed(2)}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={stock.current_price < analysis.request_params.fcn_params.knock_out_barrier ? 'text-green-600' : 'text-red-600'}>
-                                {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.knock_out_barrier.toFixed(2)}
+                              <span className={analysis.fcn_metrics[stock.symbol]?.performance_vs_reference >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                {analysis.fcn_metrics[stock.symbol]?.performance_vs_reference >= 0 ? '+' : ''}{analysis.fcn_metrics[stock.symbol]?.performance_vs_reference?.toFixed(2) || 'N/A'}%
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              <span className={stock.current_price > analysis.request_params.fcn_params.knock_in_barrier ? 'text-green-600' : 'text-red-600'}>
-                                {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.knock_in_barrier.toFixed(2)}
+                              <span className={stock.current_price < analysis.fcn_metrics[stock.symbol]?.knockout_barrier ? 'text-green-600' : 'text-red-600'}>
+                                {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockout_barrier?.toFixed(2) || 'N/A'}
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.monthly_coupon?.toFixed(2) || 'N/A'}
+                              <span className={stock.current_price > analysis.fcn_metrics[stock.symbol]?.knockin_barrier ? 'text-green-600' : 'text-red-600'}>
+                                {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockin_barrier?.toFixed(2) || 'N/A'}
+                              </span>
                             </td>
                           </tr>
                         ))}
