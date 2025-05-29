@@ -168,9 +168,9 @@ class FCNAPITester:
                 continue
                 
             print(f"  {symbol}:")
-            print(f"    Volatility: {metrics.get('volatility_annualized', 0):,.2f}%")
-            print(f"    Sharpe Ratio: {metrics.get('sharpe_ratio', 0):,.2f}")
-            print(f"    Max Drawdown: {metrics.get('max_drawdown', 0):,.2f}%")
+            print(f"    Volatility: {metrics.get('volatility_annualized', 0.0):,.2f}%")
+            print(f"    Sharpe Ratio: {metrics.get('sharpe_ratio', 0.0):,.2f}")
+            print(f"    Max Drawdown: {metrics.get('max_drawdown', 0.0):,.2f}%")
             print(f"    Is Worst Performer: {metrics.get('is_worst_performer', False)}")
         
         # Print scenario analysis
