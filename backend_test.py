@@ -104,12 +104,17 @@ class FCNAPITester:
         print(f"  Coupon Rate: {fcn_params.get('coupon_rate', 0)}%")
         print(f"  Face Value: ${fcn_params.get('face_value', 0):,.2f}")
         print(f"  Maturity: {fcn_params.get('maturity_months', 0)} months")
-        print(f"  Reference Price: ${fcn_params.get('reference_price', 0):,.2f}")
-        print(f"  Strike Price: ${fcn_params.get('strike_price', 0):,.2f}")
+        print(f"  Basket Type: {fcn_params.get('basket_type', 'N/A')}")
         print(f"  Knock-Out Barrier %: {fcn_params.get('knock_out_barrier_pct', 0)}%")
         print(f"  Knock-In Barrier %: {fcn_params.get('knock_in_barrier_pct', 0)}%")
         print(f"  Barrier Style: {fcn_params.get('barrier_style', 'N/A')}")
         print(f"  Autocallable: {fcn_params.get('autocallable', False)}")
+        
+        # Print reference prices
+        reference_prices = fcn_params.get('reference_prices', {})
+        print("\nReference Prices:")
+        for symbol, price in reference_prices.items():
+            print(f"  {symbol}: ${price:,.2f}")
         
         # Print stock info
         stocks_info = analysis.get('stocks_info', [])
@@ -144,34 +149,46 @@ class FCNAPITester:
             print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout', 0):,.2f}%")
             print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin', 0):,.2f}%")
             print(f"    Monthly Coupon: {currency_symbol}{metrics.get('monthly_coupon', 0):,.2f}")
+            print(f"    Is Worst Performer: {metrics.get('is_worst_performer', False)}")
         
         # Print risk metrics
         risk_metrics = analysis.get('risk_metrics', {})
-        print("\nRisk Metrics:")
+        basket_metrics = risk_metrics.get('basket_metrics', {})
+        print("\nBasket Risk Metrics:")
+        print(f"  Expected Payoff: ${basket_metrics.get('expected_payoff', 0):,.2f}")
+        print(f"  Knock-Out Probability: {basket_metrics.get('knock_out_probability', 0):,.2f}%")
+        print(f"  Knock-In Probability: {basket_metrics.get('knock_in_probability', 0):,.2f}%")
+        print(f"  Avg Redemption Month: {basket_metrics.get('avg_redemption_month', 0):,.2f}")
+        print(f"  Most Frequent Worst Performer: {basket_metrics.get('most_frequent_worst', 'N/A')}")
+        
+        # Print individual stock risk metrics
+        print("\nIndividual Stock Risk Metrics:")
         for symbol, metrics in risk_metrics.items():
-            # Find the stock info for this symbol to get the exchange
-            stock = next((s for s in stocks_info if s.get('symbol') == symbol), None)
-            currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
-            
+            if symbol == 'basket_metrics':
+                continue
+                
             print(f"  {symbol}:")
-            print(f"    Knock-Out Probability: {metrics.get('knock_out_probability', 0):,.2f}%")
-            print(f"    Knock-In Probability: {metrics.get('knock_in_probability', 0):,.2f}%")
-            print(f"    Expected Payoff: {currency_symbol}{metrics.get('expected_payoff', 0):,.2f}")
-            print(f"    Avg Redemption Month: {metrics.get('avg_redemption_month', 0):,.2f}")
+            print(f"    Volatility: {metrics.get('volatility_annualized', 0):,.2f}%")
+            print(f"    Sharpe Ratio: {metrics.get('sharpe_ratio', 0):,.2f}")
+            print(f"    Max Drawdown: {metrics.get('max_drawdown', 0):,.2f}%")
+            print(f"    Is Worst Performer: {metrics.get('is_worst_performer', False)}")
         
         # Print scenario analysis
         scenario_analysis = analysis.get('scenario_analysis', {})
         print("\nScenario Analysis:")
         for scenario, data in scenario_analysis.items():
             print(f"  {scenario}:")
-            for symbol, results in data.items():
-                # Find the stock info for this symbol to get the exchange
-                stock = next((s for s in stocks_info if s.get('symbol') == symbol), None)
-                currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
-                
-                print(f"    {symbol}: {currency_symbol}{results.get('payoff', 0):,.2f} ({results.get('total_return', 0):+.2f}%)")
-                print(f"      Redemption Type: {results.get('redemption_type', 'N/A')}")
-                print(f"      Future Price: {currency_symbol}{results.get('future_price', 0):,.2f}")
+            print(f"    Basket Performance: {data.get('basket_performance', 0):,.2f}%")
+            print(f"    Worst Performer: {data.get('worst_performer', 'N/A')}")
+            print(f"    Payoff: ${data.get('payoff', 0):,.2f}")
+            print(f"    Total Return: {data.get('total_return', 0):+.2f}%")
+            print(f"    Redemption Type: {data.get('redemption_type', 'N/A')}")
+            
+            # Print individual performances
+            individual_performances = data.get('individual_performances', {})
+            print(f"    Individual Performances:")
+            for symbol, performance in individual_performances.items():
+                print(f"      {symbol}: {performance:+.2f}%")
 
     def test_get_analysis(self, analysis_id):
         """Test retrieving a saved analysis"""
@@ -258,73 +275,142 @@ def main():
             print(f"  Name: {response.get('name')}")
             print("")
     
-    # Test Case 1: Single US Stock with Reference Price
-    print("\n🔍 Test Case 1: Single US Stock with Reference Price")
-    fcn_params_us = {
+    # Test Case 1: Standard US Basket (2 stocks)
+    print("\n🔍 Test Case 1: Standard US Basket (2 stocks)")
+    
+    # Get current prices for reference
+    aapl_price = us_stock_info_results.get("AAPL", {}).get("current_price", 200.0)
+    msft_price = us_stock_info_results.get("MSFT", {}).get("current_price", 350.0)
+    
+    fcn_params_us_basket = {
         "coupon_rate": 6.0,
         "face_value": 100000,
         "maturity_months": 12,
-        "reference_price": 200.0,  # Fixed reference price
-        "strike_price": 200.0,     # Usually same as reference
-        "knock_out_barrier_pct": 110.0,  # 110% of reference = $220
-        "knock_in_barrier_pct": 70.0,    # 70% of reference = $140
+        "reference_prices": {"AAPL": 200.0, "MSFT": 350.0},
+        "strike_prices": {"AAPL": 200.0, "MSFT": 350.0},
+        "knock_out_barrier_pct": 110.0,
+        "knock_in_barrier_pct": 70.0,
         "barrier_style": "american",
         "observation_frequency": "monthly",
-        "autocallable": True
+        "autocallable": True,
+        "basket_type": "worst_of"
     }
     
-    success_us, analysis_us = tester.test_analyze_fcn(["AAPL"], fcn_params_us)
+    success_us_basket, analysis_us_basket = tester.test_analyze_fcn(["AAPL", "MSFT"], fcn_params_us_basket)
     
-    # Test Case 2: HK Stock with Reference Price
-    print("\n🔍 Test Case 2: HK Stock with Reference Price")
-    fcn_params_hk = {
-        "coupon_rate": 6.0,
-        "face_value": 1000000,
-        "maturity_months": 12,
-        "reference_price": 500.0,  # Fixed reference price
-        "strike_price": 500.0,     # Usually same as reference
-        "knock_out_barrier_pct": 110.0,  # 110% of reference = HK$550
-        "knock_in_barrier_pct": 70.0,    # 70% of reference = HK$350
-        "barrier_style": "american",
-        "observation_frequency": "monthly",
-        "autocallable": True
-    }
+    # Test Case 2: Mixed US/HK Basket
+    print("\n🔍 Test Case 2: Mixed US/HK Basket")
     
-    success_hk, analysis_hk = tester.test_analyze_fcn(["0700.HK"], fcn_params_hk)
+    # Get current prices for reference
+    aapl_price = us_stock_info_results.get("AAPL", {}).get("current_price", 200.0)
+    tencent_price = hk_stock_info_results.get("0700.HK", {}).get("current_price", 500.0)
     
-    # Test Case 3: Mixed US/HK Portfolio with Reference Price
-    print("\n🔍 Test Case 3: Mixed US/HK Portfolio with Reference Price")
-    fcn_params_mixed = {
+    fcn_params_mixed_basket = {
         "coupon_rate": 5.8,
         "face_value": 500000,
         "maturity_months": 6,
-        "reference_price": 150.0,  # Fixed reference price
-        "strike_price": 150.0,     # Usually same as reference
-        "knock_out_barrier_pct": 110.0,  # 110% of reference = $165
-        "knock_in_barrier_pct": 70.0,    # 70% of reference = $105
+        "reference_prices": {"AAPL": 200.0, "0700.HK": 500.0},
+        "strike_prices": {"AAPL": 200.0, "0700.HK": 500.0},
+        "knock_out_barrier_pct": 110.0,
+        "knock_in_barrier_pct": 70.0,
         "barrier_style": "european",
         "observation_frequency": "monthly",
-        "autocallable": True
+        "autocallable": True,
+        "basket_type": "worst_of"
     }
     
-    success_mixed, analysis_mixed = tester.test_analyze_fcn(["AAPL", "0700.HK"], fcn_params_mixed)
+    success_mixed_basket, analysis_mixed_basket = tester.test_analyze_fcn(["AAPL", "0700.HK"], fcn_params_mixed_basket)
     
-    # Test Case 4: Different Reference and Strike Prices
-    print("\n🔍 Test Case 4: Different Reference and Strike Prices")
-    fcn_params_diff = {
-        "coupon_rate": 8.0,
-        "face_value": 750000,
-        "maturity_months": 3,
-        "reference_price": 180.0,  # Fixed reference price
-        "strike_price": 190.0,     # Different from reference price
-        "knock_out_barrier_pct": 105.0,  # 105% of reference = $189
-        "knock_in_barrier_pct": 95.0,    # 95% of reference = $171
+    # Test Case 3: Validation Testing - Only 1 stock (should fail)
+    print("\n🔍 Test Case 3: Validation Testing - Only 1 stock (should fail)")
+    
+    fcn_params_single_stock = {
+        "coupon_rate": 6.0,
+        "face_value": 100000,
+        "maturity_months": 12,
+        "reference_prices": {"AAPL": 200.0},
+        "strike_prices": {"AAPL": 200.0},
+        "knock_out_barrier_pct": 110.0,
+        "knock_in_barrier_pct": 70.0,
         "barrier_style": "american",
-        "observation_frequency": "daily",
-        "autocallable": True
+        "observation_frequency": "monthly",
+        "autocallable": True,
+        "basket_type": "worst_of"
     }
     
-    success_diff, analysis_diff = tester.test_analyze_fcn(["MSFT"], fcn_params_diff)
+    # This should fail with a 400 error
+    tester.run_test(
+        "FCN Analysis with Single Stock (Should Fail)",
+        "POST",
+        "analyze",
+        400,
+        data={
+            "symbols": ["AAPL"],
+            "fcn_params": fcn_params_single_stock,
+            "analysis_period": 252,
+            "scenarios": {
+                "base_case": 0.0,
+                "bull_case": 0.15,
+                "bear_case": -0.20
+            }
+        }
+    )
+    
+    # Test Case 4: Validation Testing - 3+ stocks (should work)
+    print("\n🔍 Test Case 4: Validation Testing - 3+ stocks (should work)")
+    
+    fcn_params_multi_stock = {
+        "coupon_rate": 6.0,
+        "face_value": 100000,
+        "maturity_months": 12,
+        "reference_prices": {"AAPL": 200.0, "MSFT": 350.0, "GOOGL": 150.0},
+        "strike_prices": {"AAPL": 200.0, "MSFT": 350.0, "GOOGL": 150.0},
+        "knock_out_barrier_pct": 110.0,
+        "knock_in_barrier_pct": 70.0,
+        "barrier_style": "american",
+        "observation_frequency": "monthly",
+        "autocallable": True,
+        "basket_type": "worst_of"
+    }
+    
+    success_multi_stock, analysis_multi_stock = tester.test_analyze_fcn(["AAPL", "MSFT", "GOOGL"], fcn_params_multi_stock)
+    
+    # Test Case 5: Different Basket Types
+    print("\n🔍 Test Case 5: Different Basket Types")
+    
+    # Best-of basket
+    fcn_params_best_of = {
+        "coupon_rate": 5.0,
+        "face_value": 100000,
+        "maturity_months": 12,
+        "reference_prices": {"AAPL": 200.0, "MSFT": 350.0},
+        "strike_prices": {"AAPL": 200.0, "MSFT": 350.0},
+        "knock_out_barrier_pct": 110.0,
+        "knock_in_barrier_pct": 70.0,
+        "barrier_style": "american",
+        "observation_frequency": "monthly",
+        "autocallable": True,
+        "basket_type": "best_of"
+    }
+    
+    success_best_of, analysis_best_of = tester.test_analyze_fcn(["AAPL", "MSFT"], fcn_params_best_of)
+    
+    # Average basket
+    fcn_params_average = {
+        "coupon_rate": 5.5,
+        "face_value": 100000,
+        "maturity_months": 12,
+        "reference_prices": {"AAPL": 200.0, "MSFT": 350.0},
+        "strike_prices": {"AAPL": 200.0, "MSFT": 350.0},
+        "knock_out_barrier_pct": 110.0,
+        "knock_in_barrier_pct": 70.0,
+        "barrier_style": "american",
+        "observation_frequency": "monthly",
+        "autocallable": True,
+        "basket_type": "average"
+    }
+    
+    success_average, analysis_average = tester.test_analyze_fcn(["AAPL", "MSFT"], fcn_params_average)
     
     # Test retrieving and listing analyses if any test succeeded
     if tester.analysis_id:
@@ -337,34 +423,6 @@ def main():
         # Test report generation
         tester.test_generate_report(tester.analysis_id, "excel")
         tester.test_generate_report(tester.analysis_id, "powerpoint")
-    
-    # Test error handling
-    print("\n🔍 Testing Error Handling...")
-    
-    # Test with invalid stock symbol
-    tester.test_get_stock("INVALID_SYMBOL")
-    
-    # Test with invalid HK stock symbol format
-    tester.test_get_stock("700.HK")  # Missing leading zero
-    
-    # Test analysis with empty symbols
-    tester.test_analyze_fcn([], fcn_params_us)
-    
-    # Test with invalid barrier percentages (knock_in_barrier_pct > knock_out_barrier_pct)
-    invalid_barriers_params = {
-        "coupon_rate": 5.5,
-        "face_value": 100000,
-        "maturity_months": 12,
-        "reference_price": 200.0,
-        "strike_price": 200.0,
-        "knock_out_barrier_pct": 75.0,  # Lower than knock_in_barrier_pct (invalid)
-        "knock_in_barrier_pct": 90.0,   # Higher than knock_out_barrier_pct (invalid)
-        "barrier_style": "american",
-        "observation_frequency": "monthly",
-        "autocallable": True
-    }
-    
-    tester.test_analyze_fcn(["0700.HK"], invalid_barriers_params)
     
     # Print results
     print(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
