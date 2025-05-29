@@ -145,6 +145,8 @@ class FCNAPITester:
             perf_vs_ref = metrics.get('performance_vs_reference')
             if perf_vs_ref is not None:
                 print(f"    Performance vs Reference: {perf_vs_ref:,.2f}%")
+            else:
+                print(f"    Performance vs Reference: N/A")
             
             print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout', 0):,.2f}%")
             print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin', 0):,.2f}%")
@@ -155,10 +157,31 @@ class FCNAPITester:
         risk_metrics = analysis.get('risk_metrics', {})
         basket_metrics = risk_metrics.get('basket_metrics', {})
         print("\nBasket Risk Metrics:")
-        print(f"  Expected Payoff: ${basket_metrics.get('expected_payoff', 0):,.2f}")
-        print(f"  Knock-Out Probability: {basket_metrics.get('knock_out_probability', 0):,.2f}%")
-        print(f"  Knock-In Probability: {basket_metrics.get('knock_in_probability', 0):,.2f}%")
-        print(f"  Avg Redemption Month: {basket_metrics.get('avg_redemption_month', 0):,.2f}")
+        
+        expected_payoff = basket_metrics.get('expected_payoff')
+        if expected_payoff is not None:
+            print(f"  Expected Payoff: ${expected_payoff:,.2f}")
+        else:
+            print(f"  Expected Payoff: N/A")
+            
+        ko_prob = basket_metrics.get('knock_out_probability')
+        if ko_prob is not None:
+            print(f"  Knock-Out Probability: {ko_prob:,.2f}%")
+        else:
+            print(f"  Knock-Out Probability: N/A")
+            
+        ki_prob = basket_metrics.get('knock_in_probability')
+        if ki_prob is not None:
+            print(f"  Knock-In Probability: {ki_prob:,.2f}%")
+        else:
+            print(f"  Knock-In Probability: N/A")
+            
+        avg_redemption = basket_metrics.get('avg_redemption_month')
+        if avg_redemption is not None:
+            print(f"  Avg Redemption Month: {avg_redemption:,.2f}")
+        else:
+            print(f"  Avg Redemption Month: N/A")
+            
         print(f"  Most Frequent Worst Performer: {basket_metrics.get('most_frequent_worst', 'N/A')}")
         
         # Print individual stock risk metrics
@@ -168,9 +191,25 @@ class FCNAPITester:
                 continue
                 
             print(f"  {symbol}:")
-            print(f"    Volatility: {metrics.get('volatility_annualized', 0.0):,.2f}%")
-            print(f"    Sharpe Ratio: {metrics.get('sharpe_ratio', 0.0):,.2f}")
-            print(f"    Max Drawdown: {metrics.get('max_drawdown', 0.0):,.2f}%")
+            
+            volatility = metrics.get('volatility_annualized')
+            if volatility is not None:
+                print(f"    Volatility: {volatility:,.2f}%")
+            else:
+                print(f"    Volatility: N/A")
+                
+            sharpe = metrics.get('sharpe_ratio')
+            if sharpe is not None:
+                print(f"    Sharpe Ratio: {sharpe:,.2f}")
+            else:
+                print(f"    Sharpe Ratio: N/A")
+                
+            drawdown = metrics.get('max_drawdown')
+            if drawdown is not None:
+                print(f"    Max Drawdown: {drawdown:,.2f}%")
+            else:
+                print(f"    Max Drawdown: N/A")
+                
             print(f"    Is Worst Performer: {metrics.get('is_worst_performer', False)}")
         
         # Print scenario analysis
@@ -178,17 +217,37 @@ class FCNAPITester:
         print("\nScenario Analysis:")
         for scenario, data in scenario_analysis.items():
             print(f"  {scenario}:")
-            print(f"    Basket Performance: {data.get('basket_performance', 0):,.2f}%")
+            
+            basket_perf = data.get('basket_performance')
+            if basket_perf is not None:
+                print(f"    Basket Performance: {basket_perf:,.2f}%")
+            else:
+                print(f"    Basket Performance: N/A")
+                
             print(f"    Worst Performer: {data.get('worst_performer', 'N/A')}")
-            print(f"    Payoff: ${data.get('payoff', 0):,.2f}")
-            print(f"    Total Return: {data.get('total_return', 0):+.2f}%")
+            
+            payoff = data.get('payoff')
+            if payoff is not None:
+                print(f"    Payoff: ${payoff:,.2f}")
+            else:
+                print(f"    Payoff: N/A")
+                
+            total_return = data.get('total_return')
+            if total_return is not None:
+                print(f"    Total Return: {total_return:+.2f}%")
+            else:
+                print(f"    Total Return: N/A")
+                
             print(f"    Redemption Type: {data.get('redemption_type', 'N/A')}")
             
             # Print individual performances
             individual_performances = data.get('individual_performances', {})
             print(f"    Individual Performances:")
             for symbol, performance in individual_performances.items():
-                print(f"      {symbol}: {performance:+.2f}%")
+                if performance is not None:
+                    print(f"      {symbol}: {performance:+.2f}%")
+                else:
+                    print(f"      {symbol}: N/A")
 
     def test_get_analysis(self, analysis_id):
         """Test retrieving a saved analysis"""
