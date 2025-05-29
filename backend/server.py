@@ -363,11 +363,12 @@ def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters
             if symbol in price_paths:
                 final_prices[symbol] = price_paths[symbol][-1]
         
-        # Calculate FCN payoff using basket structure
+        # Calculate FCN payoff using basket structure with put strikes
         payoff_result = calculate_fcn_payoff(
             final_prices=final_prices,
             reference_prices=fcn_params.reference_prices,
             strike_prices=fcn_params.strike_prices,
+            put_strike_prices=fcn_params.put_strike_prices,
             knock_out_barrier_pct=fcn_params.knock_out_barrier_pct,
             knock_in_barrier_pct=fcn_params.knock_in_barrier_pct,
             coupon_rate=fcn_params.coupon_rate,
