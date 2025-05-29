@@ -227,12 +227,64 @@ const FCNCalculator = () => {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-xl font-semibold mb-4 text-gray-800">Underlying Stocks</h3>
               
+              {/* Market Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Market</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedMarket('US')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedMarket === 'US'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    🇺🇸 US Market
+                  </button>
+                  <button
+                    onClick={() => setSelectedMarket('HK')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedMarket === 'HK'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    🇭🇰 HK Market
+                  </button>
+                </div>
+              </div>
+
+              {/* Popular Stocks */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Popular {selectedMarket} Stocks
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {popularStocks[selectedMarket].map(stock => (
+                    <button
+                      key={stock.symbol}
+                      onClick={() => addPopularStock(stock.symbol)}
+                      disabled={symbols.includes(stock.symbol)}
+                      className={`p-2 text-left text-xs rounded border transition-colors ${
+                        symbols.includes(stock.symbol)
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-50 hover:bg-blue-50 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="font-semibold">{stock.symbol}</div>
+                      <div className="text-gray-600 truncate">{stock.name}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Manual Symbol Input */}
               <div className="flex gap-2 mb-4">
                 <input
                   type="text"
                   value={newSymbol}
                   onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-                  placeholder="Enter symbol (e.g., AAPL)"
+                  placeholder={selectedMarket === 'HK' ? 'Enter symbol (e.g., 0700.HK)' : 'Enter symbol (e.g., AAPL)'}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   onKeyPress={(e) => e.key === 'Enter' && addSymbol()}
                 />
@@ -244,14 +296,33 @@ const FCNCalculator = () => {
                 </button>
               </div>
 
+              {/* Symbol Format Helper */}
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm text-blue-800">
+                  <strong>Symbol Format:</strong>
+                  {selectedMarket === 'US' ? (
+                    <div>US stocks: Use ticker symbols (e.g., AAPL, MSFT, GOOGL)</div>
+                  ) : (
+                    <div>HK stocks: Use format XXXX.HK (e.g., 0700.HK, 9988.HK)</div>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 {symbols.map(symbol => (
                   <div key={symbol} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
-                      <span className="font-semibold text-gray-800">{symbol}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-800">{symbol}</span>
+                        {stockInfo[symbol] && (
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                            {stockInfo[symbol].exchange}
+                          </span>
+                        )}
+                      </div>
                       {stockInfo[symbol] && (
                         <div className="text-sm text-gray-600">
-                          ${stockInfo[symbol].current_price?.toFixed(2)} | {stockInfo[symbol].name}
+                          {getCurrencySymbol(stockInfo[symbol].exchange)}{stockInfo[symbol].current_price?.toFixed(2)} | {stockInfo[symbol].name}
                         </div>
                       )}
                     </div>
