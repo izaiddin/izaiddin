@@ -451,6 +451,38 @@ const FCNCalculator = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Put Strike Prices
+                  </label>
+                  <div className="space-y-2">
+                    {symbols.map(symbol => (
+                      <div key={symbol} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm font-medium">{symbol}:</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={fcnParams.put_strike_prices[symbol] || 0}
+                            onChange={(e) => setFcnParams({
+                              ...fcnParams,
+                              put_strike_prices: {
+                                ...fcnParams.put_strike_prices,
+                                [symbol]: parseFloat(e.target.value)
+                              }
+                            })}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                          />
+                          <span className="text-xs text-gray-500">
+                            {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Put strike prices for equity conversion if knock-in occurs</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Knock-Out Barrier (%)
                   </label>
                   <input
