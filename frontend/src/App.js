@@ -706,21 +706,21 @@ const FCNCalculator = () => {
 
                 {/* Risk Metrics */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Risk Analysis</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Individual Stock Risk Analysis</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full table-auto">
                       <thead>
                         <tr className="bg-gray-50">
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Symbol</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Volatility</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-out Prob</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-in Prob</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Expected Payoff</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Avg Redemption</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Sharpe Ratio</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Max Drawdown</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Performance vs Ref</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(analysis.risk_metrics).map(([symbol, risk], index) => {
+                        {Object.entries(analysis.risk_metrics).filter(([key]) => key !== 'basket_metrics').map(([symbol, risk], index) => {
                           const stock = analysis.stocks_info.find(s => s.symbol === symbol);
                           const currencySymbol = stock ? getCurrencySymbol(stock.exchange) : '$';
                           
@@ -736,19 +736,29 @@ const FCNCalculator = () => {
                                   )}
                                 </div>
                               </td>
-                              <td className="px-4 py-3">{risk.volatility_annualized.toFixed(2)}%</td>
+                              <td className="px-4 py-3">{risk.volatility_annualized?.toFixed(2) || 'N/A'}%</td>
+                              <td className="px-4 py-3">{risk.sharpe_ratio?.toFixed(2) || 'N/A'}</td>
                               <td className="px-4 py-3">
-                                <span className={risk.knock_out_probability > 30 ? 'text-green-600' : 'text-orange-600'}>
-                                  {risk.knock_out_probability.toFixed(2)}%
+                                <span className="text-red-600">
+                                  {risk.max_drawdown?.toFixed(2) || 'N/A'}%
                                 </span>
                               </td>
                               <td className="px-4 py-3">
-                                <span className={risk.knock_in_probability < 20 ? 'text-green-600' : 'text-red-600'}>
-                                  {risk.knock_in_probability.toFixed(2)}%
+                                <span className={risk.performance_vs_reference >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                  {risk.performance_vs_reference >= 0 ? '+' : ''}{risk.performance_vs_reference?.toFixed(2) || 'N/A'}%
                                 </span>
                               </td>
-                              <td className="px-4 py-3">{currencySymbol}{risk.expected_payoff.toFixed(2)}</td>
-                              <td className="px-4 py-3">{risk.avg_redemption_month.toFixed(1)} months</td>
+                              <td className="px-4 py-3">
+                                {risk.is_worst_performer ? (
+                                  <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">
+                                    WORST PERFORMER
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                                    OUTPERFORMING
+                                  </span>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
