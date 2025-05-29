@@ -380,6 +380,20 @@ const FCNCalculator = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reference Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={fcnParams.reference_price}
+                    onChange={(e) => setFcnParams({...fcnParams, reference_price: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Initial fixing price of the underlying stock</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Strike Price ($)
                   </label>
                   <input
@@ -389,34 +403,39 @@ const FCNCalculator = () => {
                     onChange={(e) => setFcnParams({...fcnParams, strike_price: parseFloat(e.target.value)})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Price used for equity exposure calculations</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Knock-Out Barrier ($)
+                    Knock-Out Barrier (%)
                   </label>
                   <input
                     type="number"
-                    step="0.01"
-                    value={fcnParams.knock_out_barrier}
-                    onChange={(e) => setFcnParams({...fcnParams, knock_out_barrier: parseFloat(e.target.value)})}
+                    step="0.1"
+                    value={fcnParams.knock_out_barrier_pct}
+                    onChange={(e) => setFcnParams({...fcnParams, knock_out_barrier_pct: parseFloat(e.target.value)})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Early redemption trigger (usually above current price)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Early redemption trigger (% of reference price) = {getCurrencySymbol('NMS')}{(fcnParams.reference_price * fcnParams.knock_out_barrier_pct / 100).toFixed(2)}
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Knock-In Barrier ($)
+                    Knock-In Barrier (%)
                   </label>
                   <input
                     type="number"
-                    step="0.01"
-                    value={fcnParams.knock_in_barrier}
-                    onChange={(e) => setFcnParams({...fcnParams, knock_in_barrier: parseFloat(e.target.value)})}
+                    step="0.1"
+                    value={fcnParams.knock_in_barrier_pct}
+                    onChange={(e) => setFcnParams({...fcnParams, knock_in_barrier_pct: parseFloat(e.target.value)})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Capital protection loss trigger (usually below current price)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Capital protection loss trigger (% of reference price) = {getCurrencySymbol('NMS')}{(fcnParams.reference_price * fcnParams.knock_in_barrier_pct / 100).toFixed(2)}
+                  </p>
                 </div>
 
                 <div>
