@@ -316,14 +316,15 @@ const FCNCalculator = () => {
                 </button>
               </div>
 
-              {/* Symbol Format Helper */}
+              {/* FCN Basket Info */}
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm text-blue-800">
-                  <strong>Symbol Format:</strong>
-                  {selectedMarket === 'US' ? (
-                    <div>US stocks: Use ticker symbols (e.g., AAPL, MSFT, GOOGL)</div>
-                  ) : (
-                    <div>HK stocks: Use format XXXX.HK (e.g., 0700.HK, 9988.HK)</div>
+                  <strong>FCN Basket Structure:</strong> FCNs typically require exactly 2 underlying stocks. 
+                  The performance is based on the <strong>worst-performing</strong> stock in the basket.
+                  {symbols.length < 2 && (
+                    <div className="mt-1 text-red-600 font-medium">
+                      ⚠️ Please add {2 - symbols.length} more stock{2 - symbols.length > 1 ? 's' : ''} to complete the basket.
+                    </div>
                   )}
                 </div>
               </div>
