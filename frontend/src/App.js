@@ -171,8 +171,8 @@ const FCNCalculator = () => {
   };
 
   const runAnalysis = async () => {
-    if (symbols.length === 0) {
-      setError('Please add at least one stock symbol');
+    if (symbols.length < 2) {
+      setError('FCN requires at least 2 stocks for basket structure');
       return;
     }
 
