@@ -98,23 +98,23 @@ class FCNAPITester:
         # Print FCN parameters
         fcn_params = analysis.get('request_params', {}).get('fcn_params', {})
         print(f"FCN Parameters:")
-        print(f"  Coupon Rate: {fcn_params.get('coupon_rate')}%")
-        print(f"  Face Value: ${fcn_params.get('face_value'):,.2f}")
-        print(f"  Maturity: {fcn_params.get('maturity_months')} months")
-        print(f"  Reference Price: ${fcn_params.get('reference_price'):,.2f}")
-        print(f"  Strike Price: ${fcn_params.get('strike_price'):,.2f}")
-        print(f"  Knock-Out Barrier %: {fcn_params.get('knock_out_barrier_pct')}%")
-        print(f"  Knock-In Barrier %: {fcn_params.get('knock_in_barrier_pct')}%")
-        print(f"  Barrier Style: {fcn_params.get('barrier_style')}")
-        print(f"  Autocallable: {fcn_params.get('autocallable')}")
+        print(f"  Coupon Rate: {fcn_params.get('coupon_rate', 0)}%")
+        print(f"  Face Value: ${fcn_params.get('face_value', 0):,.2f}")
+        print(f"  Maturity: {fcn_params.get('maturity_months', 0)} months")
+        print(f"  Reference Price: ${fcn_params.get('reference_price', 0):,.2f}")
+        print(f"  Strike Price: ${fcn_params.get('strike_price', 0):,.2f}")
+        print(f"  Knock-Out Barrier %: {fcn_params.get('knock_out_barrier_pct', 0)}%")
+        print(f"  Knock-In Barrier %: {fcn_params.get('knock_in_barrier_pct', 0)}%")
+        print(f"  Barrier Style: {fcn_params.get('barrier_style', 'N/A')}")
+        print(f"  Autocallable: {fcn_params.get('autocallable', False)}")
         
         # Print stock info
         stocks_info = analysis.get('stocks_info', [])
         print("\nStock Information:")
         for stock in stocks_info:
-            symbol = stock.get('symbol')
-            exchange = stock.get('exchange')
-            current_price = stock.get('current_price')
+            symbol = stock.get('symbol', 'N/A')
+            exchange = stock.get('exchange', 'N/A')
+            current_price = stock.get('current_price', 0)
             
             # Determine currency symbol based on exchange
             currency_symbol = 'HK$' if exchange == 'HKG' else '$'
@@ -133,8 +133,11 @@ class FCNAPITester:
             print(f"    Reference Price: {currency_symbol}{metrics.get('reference_price', 0):,.2f}")
             print(f"    Knock-Out Barrier: {currency_symbol}{metrics.get('knockout_barrier', 0):,.2f} ({metrics.get('knockout_barrier_pct', 0)}%)")
             print(f"    Knock-In Barrier: {currency_symbol}{metrics.get('knockin_barrier', 0):,.2f} ({metrics.get('knockin_barrier_pct', 0)}%)")
-            if 'performance_vs_reference' in metrics:
-                print(f"    Performance vs Reference: {metrics.get('performance_vs_reference'):,.2f}%")
+            
+            perf_vs_ref = metrics.get('performance_vs_reference')
+            if perf_vs_ref is not None:
+                print(f"    Performance vs Reference: {perf_vs_ref:,.2f}%")
+            
             print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout', 0):,.2f}%")
             print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin', 0):,.2f}%")
             print(f"    Monthly Coupon: {currency_symbol}{metrics.get('monthly_coupon', 0):,.2f}")
@@ -148,10 +151,10 @@ class FCNAPITester:
             currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
             
             print(f"  {symbol}:")
-            print(f"    Knock-Out Probability: {metrics.get('knock_out_probability'):,.2f}%")
-            print(f"    Knock-In Probability: {metrics.get('knock_in_probability'):,.2f}%")
-            print(f"    Expected Payoff: {currency_symbol}{metrics.get('expected_payoff'):,.2f}")
-            print(f"    Avg Redemption Month: {metrics.get('avg_redemption_month'):,.2f}")
+            print(f"    Knock-Out Probability: {metrics.get('knock_out_probability', 0):,.2f}%")
+            print(f"    Knock-In Probability: {metrics.get('knock_in_probability', 0):,.2f}%")
+            print(f"    Expected Payoff: {currency_symbol}{metrics.get('expected_payoff', 0):,.2f}")
+            print(f"    Avg Redemption Month: {metrics.get('avg_redemption_month', 0):,.2f}")
         
         # Print scenario analysis
         scenario_analysis = analysis.get('scenario_analysis', {})
@@ -163,9 +166,9 @@ class FCNAPITester:
                 stock = next((s for s in stocks_info if s.get('symbol') == symbol), None)
                 currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
                 
-                print(f"    {symbol}: {currency_symbol}{results.get('payoff'):,.2f} ({results.get('total_return'):+.2f}%)")
-                print(f"      Redemption Type: {results.get('redemption_type')}")
-                print(f"      Future Price: {currency_symbol}{results.get('future_price'):,.2f}")
+                print(f"    {symbol}: {currency_symbol}{results.get('payoff', 0):,.2f} ({results.get('total_return', 0):+.2f}%)")
+                print(f"      Redemption Type: {results.get('redemption_type', 'N/A')}")
+                print(f"      Future Price: {currency_symbol}{results.get('future_price', 0):,.2f}")
 
     def test_get_analysis(self, analysis_id):
         """Test retrieving a saved analysis"""
