@@ -274,98 +274,132 @@ def calculate_fcn_metrics(current_prices: Dict[str, float], fcn_params: FCNParam
 
 def monte_carlo_simulation(stock_prices: pd.DataFrame, fcn_params: FCNParameters, 
                           num_simulations: int = 10000) -> Dict[str, Any]:
-    """Run Monte Carlo simulation for FCN analysis with proper barrier monitoring"""
-    results = []
+    """Run Monte Carlo simulation for FCN basket analysis with worst-of performance"""
     
-    # Calculate actual barrier levels from reference price
-    knock_out_barrier = fcn_params.reference_price * (fcn_params.knock_out_barrier_pct / 100)
-    knock_in_barrier = fcn_params.reference_price * (fcn_params.knock_in_barrier_pct / 100)
+    symbols = list(fcn_params.reference_prices.keys())
     
-    for symbol in stock_prices.columns:
-        returns = stock_prices[symbol].pct_change().dropna()
-        initial_price = fcn_params.reference_price  # Use reference price as starting point
+    # Calculate returns for each stock
+    returns_data = {}
+    for symbol in symbols:
+        if symbol in stock_prices.columns:
+            returns_data[symbol] = {
+                'returns': stock_prices[symbol].pct_change().dropna(),
+                'mu': stock_prices[symbol].pct_change().dropna().mean() * 252,
+                'sigma': stock_prices[symbol].pct_change().dropna().std() * np.sqrt(252)
+            }
+    
+    # Monte Carlo simulation
+    payoffs = []
+    knock_in_events = 0
+    knock_out_events = 0
+    early_redemptions = []
+    worst_performers = []
+    
+    for sim in range(num_simulations):
+        # Generate price paths for all stocks in basket
+        days = int(fcn_params.maturity_months * 21)  # Approximate trading days per month
+        dt = 1/252  # Daily time step
         
-        mu = returns.mean() * 252  # Annualized return
-        sigma = returns.std() * np.sqrt(252)  # Annualized volatility
-        
-        # Monte Carlo simulation
-        payoffs = []
-        knock_in_events = 0
-        knock_out_events = 0
-        early_redemptions = []
-        
-        for sim in range(num_simulations):
-            # Generate price path for the FCN term
-            days = int(fcn_params.maturity_months * 21)  # Approximate trading days per month
-            dt = 1/252  # Daily time step
+        price_paths = {}
+        for symbol in symbols:
+            if symbol in returns_data:
+                price_paths[symbol] = [fcn_params.reference_prices[symbol]]
             
-            price_path = [initial_price]
-            knocked_in = False
-            knocked_out = False
-            redemption_month = None
+        knocked_in = False
+        knocked_out = False
+        redemption_month = None
+        
+        for day in range(days):
+            current_prices = {}
             
-            for day in range(days):
-                random_shock = np.random.normal(0, 1)
-                price_change = mu * dt + sigma * np.sqrt(dt) * random_shock
-                new_price = price_path[-1] * np.exp(price_change)
-                price_path.append(new_price)
+            # Generate new prices for each stock
+            for symbol in symbols:
+                if symbol in returns_data and symbol in price_paths:
+                    mu = returns_data[symbol]['mu']
+                    sigma = returns_data[symbol]['sigma']
+                    random_shock = np.random.normal(0, 1)
+                    price_change = mu * dt + sigma * np.sqrt(dt) * random_shock
+                    new_price = price_paths[symbol][-1] * np.exp(price_change)
+                    price_paths[symbol].append(new_price)
+                    current_prices[symbol] = new_price
+            
+            # Check barriers for the entire basket
+            current_month = int(day / 21) + 1  # Current month
+            
+            if fcn_params.barrier_style == "american" or (
+                fcn_params.barrier_style == "european" and day % 21 == 0
+            ):
+                # Check barriers across all stocks in basket
+                barrier_status = check_basket_barriers(
+                    current_prices, fcn_params.reference_prices,
+                    fcn_params.knock_out_barrier_pct, fcn_params.knock_in_barrier_pct
+                )
                 
-                # Check barriers based on style
-                current_month = int(day / 21) + 1  # Current month
+                # Check knock-out barrier
+                if barrier_status["knocked_out"] and fcn_params.autocallable:
+                    knocked_out = True
+                    redemption_month = current_month
+                    knock_out_events += 1
+                    break
                 
-                if fcn_params.barrier_style == "american" or (
-                    fcn_params.barrier_style == "european" and day % 21 == 0
-                ):
-                    # Check knock-out barrier
-                    if new_price >= knock_out_barrier and fcn_params.autocallable:
-                        knocked_out = True
-                        redemption_month = current_month
-                        knock_out_events += 1
-                        break
-                    
-                    # Check knock-in barrier
-                    if new_price <= knock_in_barrier:
-                        knocked_in = True
-                        knock_in_events += 1
-            
-            final_price = price_path[-1]
-            
-            # Calculate FCN payoff
-            payoff_result = calculate_fcn_payoff(
-                final_price=final_price,
-                reference_price=fcn_params.reference_price,
-                strike_price=fcn_params.strike_price,
-                knock_out_barrier_pct=fcn_params.knock_out_barrier_pct,
-                knock_in_barrier_pct=fcn_params.knock_in_barrier_pct,
-                coupon_rate=fcn_params.coupon_rate,
-                face_value=fcn_params.face_value,
-                maturity_months=fcn_params.maturity_months,
-                barrier_breached={"knock_in": knocked_in, "knock_out": knocked_out},
-                early_redemption_month=redemption_month
-            )
-            
-            payoffs.append(payoff_result["payoff"])
-            if redemption_month:
-                early_redemptions.append(redemption_month)
+                # Check knock-in barrier
+                if barrier_status["knocked_in"]:
+                    knocked_in = True
+                    knock_in_events += 1
         
-        # Calculate statistics
-        avg_redemption_month = np.mean(early_redemptions) if early_redemptions else fcn_params.maturity_months
+        # Get final prices
+        final_prices = {}
+        for symbol in symbols:
+            if symbol in price_paths:
+                final_prices[symbol] = price_paths[symbol][-1]
         
-        results.append({
-            'symbol': symbol,
-            'reference_price': fcn_params.reference_price,
-            'expected_payoff': np.mean(payoffs),
-            'payoff_std': np.std(payoffs),
-            'knock_in_probability': knock_in_events / num_simulations * 100,
-            'knock_out_probability': knock_out_events / num_simulations * 100,
-            'avg_redemption_month': avg_redemption_month,
-            'var_95': np.percentile(payoffs, 5),
-            'var_99': np.percentile(payoffs, 1),
-            'max_payoff': np.max(payoffs),
-            'min_payoff': np.min(payoffs)
-        })
+        # Calculate FCN payoff using basket structure
+        payoff_result = calculate_fcn_payoff(
+            final_prices=final_prices,
+            reference_prices=fcn_params.reference_prices,
+            strike_prices=fcn_params.strike_prices,
+            knock_out_barrier_pct=fcn_params.knock_out_barrier_pct,
+            knock_in_barrier_pct=fcn_params.knock_in_barrier_pct,
+            coupon_rate=fcn_params.coupon_rate,
+            face_value=fcn_params.face_value,
+            maturity_months=fcn_params.maturity_months,
+            barrier_breached={"knock_in": knocked_in, "knock_out": knocked_out},
+            basket_type=fcn_params.basket_type,
+            early_redemption_month=redemption_month
+        )
+        
+        payoffs.append(payoff_result["payoff"])
+        worst_performers.append(payoff_result.get("worst_performer", "N/A"))
+        
+        if redemption_month:
+            early_redemptions.append(redemption_month)
     
-    return results
+    # Calculate statistics
+    avg_redemption_month = np.mean(early_redemptions) if early_redemptions else fcn_params.maturity_months
+    
+    # Count worst performer frequency
+    worst_performer_counts = {}
+    for performer in worst_performers:
+        if performer != "N/A":
+            worst_performer_counts[performer] = worst_performer_counts.get(performer, 0) + 1
+    
+    most_frequent_worst = max(worst_performer_counts, key=worst_performer_counts.get) if worst_performer_counts else "N/A"
+    
+    return {
+        'basket_type': fcn_params.basket_type,
+        'symbols': symbols,
+        'expected_payoff': np.mean(payoffs),
+        'payoff_std': np.std(payoffs),
+        'knock_in_probability': knock_in_events / num_simulations * 100,
+        'knock_out_probability': knock_out_events / num_simulations * 100,
+        'avg_redemption_month': avg_redemption_month,
+        'var_95': np.percentile(payoffs, 5),
+        'var_99': np.percentile(payoffs, 1),
+        'max_payoff': np.max(payoffs),
+        'min_payoff': np.min(payoffs),
+        'worst_performer_frequency': worst_performer_counts,
+        'most_frequent_worst': most_frequent_worst
+    }
 
 def create_price_chart(stock_prices: pd.DataFrame) -> str:
     """Create price chart and return as base64 string"""
