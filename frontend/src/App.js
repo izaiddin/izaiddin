@@ -32,9 +32,10 @@ const FCNCalculator = () => {
     coupon_rate: 5.5,
     face_value: 100000,
     maturity_months: 12,
-    strike_price: 0, // Will be set to current market price
-    knock_out_barrier: 0, // Will be set to 110% of current price
-    knock_in_barrier: 0, // Will be set to 70% of current price
+    reference_price: 0, // Will be set to current market price when adding stocks
+    strike_price: 0, // Will be set same as reference price initially
+    knock_out_barrier_pct: 110.0, // 110% of reference price
+    knock_in_barrier_pct: 70.0, // 70% of reference price
     barrier_style: 'american',
     observation_frequency: 'monthly',
     autocallable: true
