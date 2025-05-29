@@ -833,7 +833,7 @@ const FCNCalculator = () => {
                             </div>
                             <div className="flex justify-between">
                               <span>Total Payoff:</span>
-                              <span className="font-semibold">${scenarioData.payoff?.toFixed(2) || 'N/A'}</span>
+                              <span className="font-semibold">${scenarioData.payoff?.toFixed(4) || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Total Return:</span>
