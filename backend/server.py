@@ -62,13 +62,14 @@ class FCNParameters(BaseModel):
     coupon_rate: float  # Annual coupon rate (e.g., 5.5 for 5.5%)
     face_value: float  # Face value of the note
     maturity_months: int  # Maturity in months (FCNs typically use monthly terms)
-    reference_price: float  # Initial fixing price of the underlying stock
-    strike_price: float  # Strike price for payoff determination (often same as reference price)
+    reference_prices: Dict[str, float]  # Reference prices for each stock in the basket
+    strike_prices: Dict[str, float]  # Strike prices for each stock (often same as reference prices)
     knock_out_barrier_pct: float  # Knock-out barrier as % of reference price (e.g., 110.0 for 110%)
     knock_in_barrier_pct: float  # Knock-in barrier as % of reference price (e.g., 70.0 for 70%)
     barrier_style: str = "american"  # "american" (continuous monitoring) or "european" (observation dates only)
     observation_frequency: str = "monthly"  # monthly, weekly, daily
     autocallable: bool = True  # Whether the note can be called early on knock-out
+    basket_type: str = "worst_of"  # "worst_of" (standard FCN), "best_of", "average"
 
 class FCNAnalysisRequest(BaseModel):
     symbols: List[str]  # List of stock symbols
