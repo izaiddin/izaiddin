@@ -643,7 +643,7 @@ const FCNCalculator = () => {
 
                 {/* Stock Information */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">FCN Analysis</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">FCN Basket Analysis</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full table-auto">
                       <thead>
@@ -652,8 +652,8 @@ const FCNCalculator = () => {
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Current Price</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Reference Price</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Performance vs Ref</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-Out ({analysis.request_params.fcn_params.knock_out_barrier_pct}%)</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Knock-In ({analysis.request_params.fcn_params.knock_in_barrier_pct}%)</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Worst Performer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Barriers</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -671,7 +671,7 @@ const FCNCalculator = () => {
                               {getCurrencySymbol(stock.exchange)}{stock.current_price.toFixed(2)}
                             </td>
                             <td className="px-4 py-3">
-                              {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.reference_price.toFixed(2)}
+                              {getCurrencySymbol(stock.exchange)}{analysis.request_params.fcn_params.reference_prices[stock.symbol]?.toFixed(2) || 'N/A'}
                             </td>
                             <td className="px-4 py-3">
                               <span className={analysis.fcn_metrics[stock.symbol]?.performance_vs_reference >= 0 ? 'text-green-600' : 'text-red-600'}>
@@ -679,14 +679,23 @@ const FCNCalculator = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              <span className={stock.current_price < analysis.fcn_metrics[stock.symbol]?.knockout_barrier ? 'text-green-600' : 'text-red-600'}>
-                                {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockout_barrier?.toFixed(2) || 'N/A'}
-                              </span>
+                              {analysis.fcn_metrics[stock.symbol]?.is_worst_performer ? (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">
+                                  WORST
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={stock.current_price > analysis.fcn_metrics[stock.symbol]?.knockin_barrier ? 'text-green-600' : 'text-red-600'}>
-                                {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockin_barrier?.toFixed(2) || 'N/A'}
-                              </span>
+                              <div className="text-xs">
+                                <div className="text-green-600">
+                                  KO: {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockout_barrier?.toFixed(2) || 'N/A'}
+                                </div>
+                                <div className="text-red-600">
+                                  KI: {getCurrencySymbol(stock.exchange)}{analysis.fcn_metrics[stock.symbol]?.knockin_barrier?.toFixed(2) || 'N/A'}
+                                </div>
+                              </div>
                             </td>
                           </tr>
                         ))}
