@@ -587,25 +587,36 @@ async def analyze_fcn(request: FCNAnalysisRequest):
             
             scenario_analysis[scenario_name] = scenario_results
         
-        # Risk metrics
-        risk_metrics = {}
-        for result in monte_carlo_results:
-            symbol = result['symbol']
-            returns = stock_prices[symbol].pct_change().dropna()
-            
-            risk_metrics[symbol] = {
-                "volatility_annualized": returns.std() * np.sqrt(252) * 100,
-                "sharpe_ratio": (returns.mean() * 252) / (returns.std() * np.sqrt(252)),
-                "max_drawdown": ((stock_prices[symbol] / stock_prices[symbol].cummax()) - 1).min() * 100,
-                "var_95": result['var_95'],
-                "var_99": result['var_99'],
-                "expected_payoff": result['expected_payoff'],
-                "knock_in_probability": result['knock_in_probability'],
-                "knock_out_probability": result['knock_out_probability'],
-                "avg_redemption_month": result['avg_redemption_month'],
-                "max_payoff": result['max_payoff'],
-                "min_payoff": result['min_payoff']
+        # Risk metrics for basket FCN
+        risk_metrics = {
+            "basket_metrics": {
+                "basket_type": monte_carlo_results['basket_type'],
+                "expected_payoff": monte_carlo_results['expected_payoff'],
+                "payoff_std": monte_carlo_results['payoff_std'],
+                "knock_in_probability": monte_carlo_results['knock_in_probability'],
+                "knock_out_probability": monte_carlo_results['knock_out_probability'],
+                "avg_redemption_month": monte_carlo_results['avg_redemption_month'],
+                "var_95": monte_carlo_results['var_95'],
+                "var_99": monte_carlo_results['var_99'],
+                "max_payoff": monte_carlo_results['max_payoff'],
+                "min_payoff": monte_carlo_results['min_payoff'],
+                "worst_performer_frequency": monte_carlo_results['worst_performer_frequency'],
+                "most_frequent_worst": monte_carlo_results['most_frequent_worst']
             }
+        }
+        
+        # Add individual stock risk metrics
+        for symbol in request.symbols:
+            if symbol in stock_prices.columns:
+                returns = stock_prices[symbol].pct_change().dropna()
+                
+                risk_metrics[symbol] = {
+                    "volatility_annualized": returns.std() * np.sqrt(252) * 100,
+                    "sharpe_ratio": (returns.mean() * 252) / (returns.std() * np.sqrt(252)),
+                    "max_drawdown": ((stock_prices[symbol] / stock_prices[symbol].cummax()) - 1).min() * 100,
+                    "is_worst_performer": fcn_metrics[symbol].get("is_worst_performer", False),
+                    "performance_vs_reference": fcn_metrics[symbol].get("performance_vs_reference", 0)
+                }
         
         # Create charts
         price_chart = create_price_chart(stock_prices)
