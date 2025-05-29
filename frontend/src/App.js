@@ -666,7 +666,7 @@ const FCNCalculator = () => {
                     <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
                       <h4 className="font-semibold text-blue-800 mb-2">Expected Payoff</h4>
                       <p className="text-2xl font-bold text-blue-600">
-                        ${analysis.risk_metrics.basket_metrics?.expected_payoff?.toFixed(4) || 'N/A'}
+                        ${analysis.risk_metrics.basket_metrics?.expected_payoff?.toFixed(2) || 'N/A'}
                       </p>
                     </div>
                     <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
