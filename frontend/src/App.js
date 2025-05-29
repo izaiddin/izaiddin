@@ -92,6 +92,10 @@ const FCNCalculator = () => {
           strike_prices: {
             ...prev.strike_prices,
             [upperSymbol]: currentPrice  // Usually same as reference price
+          },
+          put_strike_prices: {
+            ...prev.put_strike_prices,
+            [upperSymbol]: currentPrice * 0.9  // Typically 90% of reference price
           }
         }));
       } catch (err) {
