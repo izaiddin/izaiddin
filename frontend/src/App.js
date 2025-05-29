@@ -8,6 +8,26 @@ const API = `${BACKEND_URL}/api`;
 const FCNCalculator = () => {
   const [symbols, setSymbols] = useState(['AAPL']);
   const [newSymbol, setNewSymbol] = useState('');
+  const [selectedMarket, setSelectedMarket] = useState('US');
+
+  // Popular stocks by market
+  const popularStocks = {
+    US: [
+      { symbol: 'AAPL', name: 'Apple Inc.' },
+      { symbol: 'MSFT', name: 'Microsoft' },
+      { symbol: 'GOOGL', name: 'Alphabet' },
+      { symbol: 'TSLA', name: 'Tesla' },
+      { symbol: 'NVDA', name: 'NVIDIA' }
+    ],
+    HK: [
+      { symbol: '0700.HK', name: 'Tencent Holdings' },
+      { symbol: '9988.HK', name: 'Alibaba Group' },
+      { symbol: '0005.HK', name: 'HSBC Holdings' },
+      { symbol: '1299.HK', name: 'AIA Group' },
+      { symbol: '3690.HK', name: 'Meituan' },
+      { symbol: '2318.HK', name: 'Ping An Insurance' }
+    ]
+  };
   const [fcnParams, setFcnParams] = useState({
     coupon_rate: 5.5,
     face_value: 100000,
