@@ -414,21 +414,25 @@ async def analyze_fcn(request: FCNAnalysisRequest):
             scenario_results = {}
             for symbol in request.symbols:
                 current_price = stock_prices[symbol].iloc[-1]
-                future_price = current_price * (1 + return_pct)
+                future_price = request.fcn_params.reference_price * (1 + return_pct)  # Apply scenario to reference price
+                
+                # Calculate barriers for scenario
+                knock_out_barrier = request.fcn_params.reference_price * (request.fcn_params.knock_out_barrier_pct / 100)
+                knock_in_barrier = request.fcn_params.reference_price * (request.fcn_params.knock_in_barrier_pct / 100)
                 
                 # For scenario analysis, assume no early redemption
                 payoff_result = calculate_fcn_payoff(
                     final_price=future_price,
-                    initial_price=current_price,
+                    reference_price=request.fcn_params.reference_price,
                     strike_price=request.fcn_params.strike_price,
-                    knock_out_barrier=request.fcn_params.knock_out_barrier,
-                    knock_in_barrier=request.fcn_params.knock_in_barrier,
+                    knock_out_barrier_pct=request.fcn_params.knock_out_barrier_pct,
+                    knock_in_barrier_pct=request.fcn_params.knock_in_barrier_pct,
                     coupon_rate=request.fcn_params.coupon_rate,
                     face_value=request.fcn_params.face_value,
                     maturity_months=request.fcn_params.maturity_months,
                     barrier_breached={
-                        "knock_in": future_price <= request.fcn_params.knock_in_barrier,
-                        "knock_out": future_price >= request.fcn_params.knock_out_barrier
+                        "knock_in": future_price <= knock_in_barrier,
+                        "knock_out": future_price >= knock_out_barrier
                     },
                     early_redemption_month=None
                 )
