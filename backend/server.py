@@ -96,11 +96,15 @@ class ReportRequest(BaseModel):
     include_charts: bool = True
 
 # FCN Calculation Functions
-def calculate_fcn_payoff(final_price: float, initial_price: float, strike_price: float,
-                        knock_out_barrier: float, knock_in_barrier: float, 
+def calculate_fcn_payoff(final_price: float, reference_price: float, strike_price: float,
+                        knock_out_barrier_pct: float, knock_in_barrier_pct: float, 
                         coupon_rate: float, face_value: float, maturity_months: int,
                         barrier_breached: Dict[str, bool], early_redemption_month: Optional[int] = None) -> Dict[str, float]:
-    """Calculate FCN payoff based on proper FCN structure"""
+    """Calculate FCN payoff based on proper FCN structure with reference price"""
+    
+    # Calculate actual barrier levels from reference price
+    knock_out_barrier = reference_price * (knock_out_barrier_pct / 100)
+    knock_in_barrier = reference_price * (knock_in_barrier_pct / 100)
     
     # Monthly coupon
     monthly_coupon = face_value * (coupon_rate / 100) / 12
@@ -110,7 +114,7 @@ def calculate_fcn_payoff(final_price: float, initial_price: float, strike_price:
         total_coupons = monthly_coupon * early_redemption_month
         return {
             "payoff": face_value + total_coupons,
-            "total_return": (face_value + total_coupons - face_value) / face_value * 100,
+            "total_return": (total_coupons) / face_value * 100,
             "coupons_received": total_coupons,
             "redemption_type": "early_knockout"
         }
@@ -140,18 +144,24 @@ def calculate_fcn_payoff(final_price: float, initial_price: float, strike_price:
         }
 
 def calculate_fcn_metrics(current_price: float, fcn_params: FCNParameters) -> Dict[str, float]:
-    """Calculate FCN-specific metrics"""
+    """Calculate FCN-specific metrics based on reference price"""
     
-    # Distance to barriers
-    distance_to_knockout = ((fcn_params.knock_out_barrier - current_price) / current_price) * 100
-    distance_to_knockin = ((current_price - fcn_params.knock_in_barrier) / current_price) * 100
+    # Calculate actual barrier levels from reference price percentages
+    knock_out_barrier = fcn_params.reference_price * (fcn_params.knock_out_barrier_pct / 100)
+    knock_in_barrier = fcn_params.reference_price * (fcn_params.knock_in_barrier_pct / 100)
+    
+    # Distance to barriers from current price
+    distance_to_knockout = ((knock_out_barrier - current_price) / current_price) * 100
+    distance_to_knockin = ((current_price - knock_in_barrier) / current_price) * 100
+    
+    # Performance vs reference price
+    performance_vs_reference = (current_price / fcn_params.reference_price - 1) * 100
     
     # Moneyness relative to strike
     moneyness = (current_price / fcn_params.strike_price - 1) * 100
     
     # Annual coupon yield
-    annual_coupon = fcn_params.face_value * (fcn_params.coupon_rate / 100)
-    current_yield = (annual_coupon / fcn_params.face_value) * 100
+    current_yield = fcn_params.coupon_rate
     
     # Maximum return if held to maturity (no knock-in)
     max_return = (fcn_params.coupon_rate / 12) * fcn_params.maturity_months
@@ -160,10 +170,14 @@ def calculate_fcn_metrics(current_price: float, fcn_params: FCNParameters) -> Di
         "current_yield": current_yield,
         "distance_to_knockout": distance_to_knockout,
         "distance_to_knockin": distance_to_knockin,
+        "performance_vs_reference": performance_vs_reference,
         "moneyness": moneyness,
         "max_return_no_knockin": max_return,
-        "knockout_barrier": fcn_params.knock_out_barrier,
-        "knockin_barrier": fcn_params.knock_in_barrier,
+        "reference_price": fcn_params.reference_price,
+        "knockout_barrier": knock_out_barrier,
+        "knockin_barrier": knock_in_barrier,
+        "knockout_barrier_pct": fcn_params.knock_out_barrier_pct,
+        "knockin_barrier_pct": fcn_params.knock_in_barrier_pct,
         "monthly_coupon": fcn_params.face_value * (fcn_params.coupon_rate / 100) / 12
     }
 
