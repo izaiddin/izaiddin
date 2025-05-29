@@ -534,7 +534,7 @@ const FCNCalculator = () => {
                       <div className="mt-1">
                         {symbols.map(symbol => (
                           <div key={symbol}>
-                            {symbol}: {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}{((fcnParams.reference_prices[symbol] || 0) * fcnParams.knock_in_barrier_pct / 100).toFixed(2)}
+                            {symbol}: {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}{((fcnParams.reference_prices[symbol] || 0) * fcnParams.knock_in_barrier_pct / 100).toFixed(4)}
                           </div>
                         ))}
                       </div>
