@@ -64,6 +64,7 @@ class FCNParameters(BaseModel):
     maturity_months: int  # Maturity in months (FCNs typically use monthly terms)
     reference_prices: Dict[str, float]  # Reference prices for each stock in the basket
     strike_prices: Dict[str, float]  # Strike prices for each stock (often same as reference prices)
+    put_strike_prices: Dict[str, float]  # Put strike prices for each stock (for equity conversion)
     knock_out_barrier_pct: float  # Knock-out barrier as % of reference price (e.g., 110.0 for 110%)
     knock_in_barrier_pct: float  # Knock-in barrier as % of reference price (e.g., 70.0 for 70%)
     barrier_style: str = "american"  # "american" (continuous monitoring) or "european" (observation dates only)
