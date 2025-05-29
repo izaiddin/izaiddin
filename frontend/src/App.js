@@ -225,17 +225,23 @@ const FCNCalculator = () => {
     if (!analysis) return;
 
     try {
+      setError(''); // Clear any previous errors
       const response = await axios.post(`${API}/generate-report`, {
         analysis_id: analysis.id,
         report_type: reportType,
         include_charts: true
       });
 
-      // Create download link
-      const downloadUrl = `${API}/download/${response.data.filename}`;
-      window.open(downloadUrl, '_blank');
+      if (response.data && response.data.filename) {
+        // Create download link
+        const downloadUrl = `${API}/download/${response.data.filename}`;
+        window.open(downloadUrl, '_blank');
+      } else {
+        setError('Report generated but download link not available');
+      }
     } catch (err) {
-      setError('Error generating report');
+      console.error('Report generation error:', err);
+      setError(`Error generating ${reportType} report: ${err.response?.data?.detail || err.message}`);
     }
   };
 
