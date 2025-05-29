@@ -130,13 +130,14 @@ class FCNAPITester:
             currency_symbol = 'HK$' if stock and stock.get('exchange') == 'HKG' else '$'
             
             print(f"  {symbol}:")
-            print(f"    Reference Price: {currency_symbol}{metrics.get('reference_price'):,.2f}")
-            print(f"    Knock-Out Barrier: {currency_symbol}{metrics.get('knockout_barrier'):,.2f} ({metrics.get('knockout_barrier_pct')}%)")
-            print(f"    Knock-In Barrier: {currency_symbol}{metrics.get('knockin_barrier'):,.2f} ({metrics.get('knockin_barrier_pct')}%)")
-            print(f"    Performance vs Reference: {metrics.get('performance_vs_reference'):,.2f}%")
-            print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout'):,.2f}%")
-            print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin'):,.2f}%")
-            print(f"    Monthly Coupon: {currency_symbol}{metrics.get('monthly_coupon'):,.2f}")
+            print(f"    Reference Price: {currency_symbol}{metrics.get('reference_price', 0):,.2f}")
+            print(f"    Knock-Out Barrier: {currency_symbol}{metrics.get('knockout_barrier', 0):,.2f} ({metrics.get('knockout_barrier_pct', 0)}%)")
+            print(f"    Knock-In Barrier: {currency_symbol}{metrics.get('knockin_barrier', 0):,.2f} ({metrics.get('knockin_barrier_pct', 0)}%)")
+            if 'performance_vs_reference' in metrics:
+                print(f"    Performance vs Reference: {metrics.get('performance_vs_reference'):,.2f}%")
+            print(f"    Distance to Knock-Out: {metrics.get('distance_to_knockout', 0):,.2f}%")
+            print(f"    Distance to Knock-In: {metrics.get('distance_to_knockin', 0):,.2f}%")
+            print(f"    Monthly Coupon: {currency_symbol}{metrics.get('monthly_coupon', 0):,.2f}")
         
         # Print risk metrics
         risk_metrics = analysis.get('risk_metrics', {})
