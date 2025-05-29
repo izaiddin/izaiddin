@@ -568,11 +568,12 @@ async def analyze_fcn(request: FCNAnalysisRequest):
                 request.fcn_params.knock_out_barrier_pct, request.fcn_params.knock_in_barrier_pct
             )
             
-            # Calculate payoff for scenario
+            # Calculate payoff for scenario with put strikes
             payoff_result = calculate_fcn_payoff(
                 final_prices=future_prices,
                 reference_prices=request.fcn_params.reference_prices,
                 strike_prices=request.fcn_params.strike_prices,
+                put_strike_prices=request.fcn_params.put_strike_prices,
                 knock_out_barrier_pct=request.fcn_params.knock_out_barrier_pct,
                 knock_in_barrier_pct=request.fcn_params.knock_in_barrier_pct,
                 coupon_rate=request.fcn_params.coupon_rate,
