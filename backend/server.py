@@ -788,7 +788,7 @@ def create_excel_report(analysis: FCNAnalysisResult, file_path: Path):
     wb.save(file_path)
 
 def create_powerpoint_report(analysis: FCNAnalysisResult, file_path: Path):
-    """Create PowerPoint presentation"""
+    """Create PowerPoint presentation for FCN basket analysis"""
     prs = Presentation()
     
     # Title slide
@@ -797,8 +797,8 @@ def create_powerpoint_report(analysis: FCNAnalysisResult, file_path: Path):
     title = slide.shapes.title
     subtitle = slide.placeholders[1]
     
-    title.text = "FCN Investment Analysis"
-    subtitle.text = f"Analysis Date: {analysis.created_at.strftime('%B %d, %Y')}\nUnderlying Assets: {', '.join([s.symbol for s in analysis.stocks_info])}"
+    title.text = "FCN Basket Investment Analysis"
+    subtitle.text = f"Analysis Date: {analysis.created_at.strftime('%B %d, %Y')}\nBasket: {', '.join([s.symbol for s in analysis.stocks_info])}"
     
     # Executive Summary slide
     slide_layout = prs.slide_layouts[1]  # Title and Content layout
@@ -809,67 +809,77 @@ def create_powerpoint_report(analysis: FCNAnalysisResult, file_path: Path):
     title.text = "Executive Summary"
     
     params = analysis.request_params.fcn_params
+    basket_metrics = analysis.risk_metrics.get('basket_metrics', {})
+    
     summary_text = f"""
-    FCN Structure:
+    FCN Basket Structure:
+    • Basket Type: {params.basket_type.replace('_', ' ').title()}
     • Coupon Rate: {params.coupon_rate}% per annum
     • Face Value: ${params.face_value:,.2f}
-    • Maturity: {params.maturity_years} years
-    • Barrier Level: {params.barrier_level}% of initial price
+    • Maturity: {params.maturity_months} months
+    • Barrier Levels: {params.knock_out_barrier_pct}% KO / {params.knock_in_barrier_pct}% KI
     
     Key Findings:
-    • {len(analysis.stocks_info)} underlying stocks analyzed
-    • Monte Carlo simulation with 10,000 scenarios
-    • Comprehensive risk and scenario analysis performed
+    • {len(analysis.stocks_info)} stocks in basket
+    • Expected Payoff: ${basket_metrics.get('expected_payoff', 0):,.2f}
+    • Knock-Out Probability: {basket_metrics.get('knock_out_probability', 0):.2f}%
+    • Knock-In Probability: {basket_metrics.get('knock_in_probability', 0):.2f}%
+    • Most Frequent Worst Performer: {basket_metrics.get('most_frequent_worst', 'N/A')}
     """
     
     content.text = summary_text
     
-    # Stock Analysis slide
+    # Basket Analysis slide
     slide = prs.slides.add_slide(slide_layout)
     title = slide.shapes.title
     content = slide.placeholders[1]
     
-    title.text = "Underlying Stock Analysis"
+    title.text = "Basket Composition & Performance"
     
-    stock_text = "Current Stock Positions:\n\n"
+    stock_text = "Current Basket Status:\n\n"
     for stock in analysis.stocks_info:
-        stock_text += f"• {stock.symbol} ({stock.name})\n"
-        stock_text += f"  Current Price: ${stock.current_price:.2f}\n"
-        if stock.pe_ratio:
-            stock_text += f"  P/E Ratio: {stock.pe_ratio:.2f}\n"
+        symbol = stock.symbol
+        ref_price = params.reference_prices.get(symbol, stock.current_price)
+        performance = ((stock.current_price / ref_price) - 1) * 100
+        
+        stock_text += f"• {symbol} ({stock.exchange})\n"
+        stock_text += f"  Current: ${stock.current_price:.2f} | Reference: ${ref_price:.2f}\n"
+        stock_text += f"  Performance vs Reference: {performance:+.2f}%\n"
+        
+        # Check if worst performer
+        metrics = analysis.fcn_metrics.get(symbol, {})
+        if metrics.get('is_worst_performer', False):
+            stock_text += f"  Status: WORST PERFORMER\n"
+        else:
+            stock_text += f"  Status: Outperforming\n"
         stock_text += "\n"
     
     content.text = stock_text
-    
-    # FCN Metrics slide
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    content = slide.placeholders[1]
-    
-    title.text = "FCN Performance Metrics"
-    
-    metrics_text = "Key Performance Indicators:\n\n"
-    for symbol, metrics in analysis.fcn_metrics.items():
-        metrics_text += f"• {symbol}:\n"
-        metrics_text += f"  Current Yield: {metrics['current_yield']:.2f}%\n"
-        metrics_text += f"  Yield to Maturity: {metrics['yield_to_maturity']:.2f}%\n"
-        metrics_text += f"  Distance to Barrier: {metrics['distance_to_barrier']:.2f}%\n\n"
-    
-    content.text = metrics_text
     
     # Risk Analysis slide
     slide = prs.slides.add_slide(slide_layout)
     title = slide.shapes.title
     content = slide.placeholders[1]
     
-    title.text = "Risk Analysis"
+    title.text = "Risk Assessment"
     
-    risk_text = "Risk Assessment Summary:\n\n"
-    for symbol, risk in analysis.risk_metrics.items():
+    risk_text = "Basket Risk Profile:\n\n"
+    
+    # Basket level risks
+    risk_text += f"Basket Metrics:\n"
+    risk_text += f"• Expected Payoff: ${basket_metrics.get('expected_payoff', 0):,.2f}\n"
+    risk_text += f"• Average Redemption: {basket_metrics.get('avg_redemption_month', 0):.1f} months\n"
+    risk_text += f"• VaR 95%: ${basket_metrics.get('var_95', 0):,.2f}\n"
+    risk_text += f"• VaR 99%: ${basket_metrics.get('var_99', 0):,.2f}\n\n"
+    
+    # Individual stock risks
+    risk_text += "Individual Stock Risk:\n"
+    for symbol in [s.symbol for s in analysis.stocks_info]:
+        risk_data = analysis.risk_metrics.get(symbol, {})
         risk_text += f"• {symbol}:\n"
-        risk_text += f"  Annual Volatility: {risk['volatility_annualized']:.2f}%\n"
-        risk_text += f"  Knock-in Probability: {risk['knock_in_probability']:.2f}%\n"
-        risk_text += f"  Expected Payoff: ${risk['expected_payoff']:.2f}\n\n"
+        risk_text += f"  Volatility: {risk_data.get('volatility_annualized', 0):.2f}%\n"
+        risk_text += f"  Max Drawdown: {risk_data.get('max_drawdown', 0):.2f}%\n"
+        risk_text += f"  Sharpe Ratio: {risk_data.get('sharpe_ratio', 0):.2f}\n\n"
     
     content.text = risk_text
     
@@ -883,11 +893,56 @@ def create_powerpoint_report(analysis: FCNAnalysisResult, file_path: Path):
     scenario_text = "Investment Scenarios:\n\n"
     for scenario_name, scenario_data in analysis.scenario_analysis.items():
         scenario_text += f"{scenario_name.replace('_', ' ').title()}:\n"
-        for symbol, data in scenario_data.items():
-            scenario_text += f"• {symbol}: ${data['payoff']:.2f} ({data['return_pct']:+.2f}%)\n"
-        scenario_text += "\n"
+        scenario_text += f"• Basket Performance: {scenario_data.get('basket_performance', 0):+.2f}%\n"
+        scenario_text += f"• Total Payoff: ${scenario_data.get('payoff', 0):,.2f}\n"
+        scenario_text += f"• Total Return: {scenario_data.get('total_return', 0):+.2f}%\n"
+        scenario_text += f"• Worst Performer: {scenario_data.get('worst_performer', 'N/A')}\n"
+        scenario_text += f"• Redemption Type: {scenario_data.get('redemption_type', 'N/A').replace('_', ' ')}\n\n"
     
     content.text = scenario_text
+    
+    # Investment Recommendation slide
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    content = slide.placeholders[1]
+    
+    title.text = "Investment Recommendation"
+    
+    # Generate basic recommendation based on metrics
+    ko_prob = basket_metrics.get('knock_out_probability', 0)
+    ki_prob = basket_metrics.get('knock_in_probability', 0)
+    expected_return = (basket_metrics.get('expected_payoff', params.face_value) / params.face_value - 1) * 100
+    
+    if ko_prob > 30 and ki_prob < 20:
+        recommendation = "ATTRACTIVE"
+        reason = "High early redemption probability with low downside risk"
+    elif ki_prob > 40:
+        recommendation = "HIGH RISK"
+        reason = "Elevated knock-in probability increases capital risk"
+    else:
+        recommendation = "MODERATE"
+        reason = "Balanced risk-return profile for coupon enhancement"
+    
+    recommendation_text = f"""
+    Investment Assessment: {recommendation}
+    
+    Key Factors:
+    • Expected Return: {expected_return:+.2f}%
+    • Early Redemption Probability: {ko_prob:.2f}%
+    • Capital Risk Probability: {ki_prob:.2f}%
+    • Coupon Enhancement: {params.coupon_rate}% p.a.
+    
+    Rationale:
+    {reason}
+    
+    Risk Considerations:
+    • Performance linked to worst-performing stock
+    • Barrier monitoring may trigger early events
+    • Monthly coupon provides income enhancement
+    • Capital protection contingent on barrier levels
+    """
+    
+    content.text = recommendation_text
     
     prs.save(file_path)
 
