@@ -460,7 +460,16 @@ const FCNCalculator = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Early redemption trigger (% of reference price) = {getCurrencySymbol('NMS')}{(fcnParams.reference_price * fcnParams.knock_out_barrier_pct / 100).toFixed(2)}
+                    Early redemption trigger (% of reference price)
+                    {symbols.length > 0 && (
+                      <div className="mt-1">
+                        {symbols.map(symbol => (
+                          <div key={symbol}>
+                            {symbol}: {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}{((fcnParams.reference_prices[symbol] || 0) * fcnParams.knock_out_barrier_pct / 100).toFixed(2)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </p>
                 </div>
 
@@ -476,7 +485,16 @@ const FCNCalculator = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Capital protection loss trigger (% of reference price) = {getCurrencySymbol('NMS')}{(fcnParams.reference_price * fcnParams.knock_in_barrier_pct / 100).toFixed(2)}
+                    Capital protection loss trigger (% of reference price)
+                    {symbols.length > 0 && (
+                      <div className="mt-1">
+                        {symbols.map(symbol => (
+                          <div key={symbol}>
+                            {symbol}: {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}{((fcnParams.reference_prices[symbol] || 0) * fcnParams.knock_in_barrier_pct / 100).toFixed(2)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </p>
                 </div>
 
