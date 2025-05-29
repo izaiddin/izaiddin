@@ -157,13 +157,16 @@ const FCNCalculator = () => {
     // Remove from FCN parameters
     const newReferencePrices = { ...fcnParams.reference_prices };
     const newStrikePrices = { ...fcnParams.strike_prices };
+    const newPutStrikePrices = { ...fcnParams.put_strike_prices };
     delete newReferencePrices[symbolToRemove];
     delete newStrikePrices[symbolToRemove];
+    delete newPutStrikePrices[symbolToRemove];
     
     setFcnParams(prev => ({
       ...prev,
       reference_prices: newReferencePrices,
-      strike_prices: newStrikePrices
+      strike_prices: newStrikePrices,
+      put_strike_prices: newPutStrikePrices
     }));
   };
 
