@@ -402,30 +402,50 @@ const FCNCalculator = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Reference Price ($)
+                    Basket Type
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={fcnParams.reference_price}
-                    onChange={(e) => setFcnParams({...fcnParams, reference_price: parseFloat(e.target.value)})}
+                  <select
+                    value={fcnParams.basket_type}
+                    onChange={(e) => setFcnParams({...fcnParams, basket_type: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Initial fixing price of the underlying stock</p>
+                  >
+                    <option value="worst_of">Worst-Of (Standard FCN)</option>
+                    <option value="best_of">Best-Of</option>
+                    <option value="average">Average Performance</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">How basket performance is calculated</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Strike Price ($)
+                    Reference Prices
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={fcnParams.strike_price}
-                    onChange={(e) => setFcnParams({...fcnParams, strike_price: parseFloat(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Price used for equity exposure calculations</p>
+                  <div className="space-y-2">
+                    {symbols.map(symbol => (
+                      <div key={symbol} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm font-medium">{symbol}:</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={fcnParams.reference_prices[symbol] || 0}
+                            onChange={(e) => setFcnParams({
+                              ...fcnParams,
+                              reference_prices: {
+                                ...fcnParams.reference_prices,
+                                [symbol]: parseFloat(e.target.value)
+                              }
+                            })}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                          />
+                          <span className="text-xs text-gray-500">
+                            {getCurrencySymbol(stockInfo[symbol]?.exchange || 'NMS')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Initial fixing prices for each stock in the basket</p>
                 </div>
 
                 <div>
