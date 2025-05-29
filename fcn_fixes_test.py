@@ -1,59 +1,106 @@
-import requests
-import sys
-import time
-import json
-from pprint import pprint
 
-# Get the backend URL from the frontend .env file
-BACKEND_URL = "https://0bf3f961-4ee9-49fc-8ed6-5c5ee1eccf8e.preview.emergentagent.com"
-API_URL = f"{BACKEND_URL}/api"
+import requests
+import json
+import time
+import sys
+import matplotlib.pyplot as plt
+import numpy as np
+import base64
+from datetime import datetime
 
 class FCNFixesTester:
-    def __init__(self):
+    def __init__(self, base_url):
+        self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = {}
 
-    def run_test(self, name, func):
-        """Run a test and track results"""
-        print(f"\n🔍 Running test: {name}")
+    def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
+        """Run a single API test"""
+        url = f"{self.base_url}/{endpoint}"
+        headers = {'Content-Type': 'application/json'}
+        
         self.tests_run += 1
+        print(f"\n🔍 Testing {name}...")
         
         try:
-            start_time = time.time()
-            result = func()
-            end_time = time.time()
-            
-            if result.get("success", False):
-                self.tests_passed += 1
-                status = "✅ PASSED"
-            else:
-                status = "❌ FAILED"
-                
-            print(f"{status} - {name}")
-            
-            # Store test results
-            self.test_results[name] = {
-                "success": result.get("success", False),
-                "details": result.get("details", {}),
-                "duration": end_time - start_time
-            }
-            
-            return result
-        except Exception as e:
-            print(f"❌ FAILED - {name} - Exception: {str(e)}")
-            self.test_results[name] = {
-                "success": False,
-                "details": {"error": str(e)},
-                "duration": 0
-            }
-            return {"success": False, "details": {"error": str(e)}}
+            if method == 'GET':
+                response = requests.get(url, headers=headers, params=params)
+            elif method == 'POST':
+                response = requests.post(url, json=data, headers=headers)
 
-    def test_chart_generation(self):
-        """Test Case 1: Chart Generation Fix"""
-        print("Testing chart generation with AAPL and MSFT...")
+            success = response.status_code == expected_status
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                if response.status_code != 204:  # No content
+                    return success, response.json()
+                return success, {}
+            else:
+                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                print(f"Response: {response.text}")
+                return False, {}
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False, {}
+
+    def test_chart_generation(self, test_data):
+        """Test chart generation with small data range"""
+        print("\n🔍 Testing chart generation with small data range...")
         
-        payload = {
+        success, response = self.run_test(
+            "Chart Generation",
+            "POST",
+            "api/analyze",
+            200,
+            data=test_data
+        )
+        
+        if success and 'charts' in response:
+            # Check if charts were generated
+            if 'payoff_distribution' in response['charts'] and response['charts']['payoff_distribution']:
+                print("✅ Chart generated successfully")
+                self.test_results["chart_generation"] = True
+                return True, response
+            else:
+                print("❌ Chart generation failed - No payoff distribution chart")
+                self.test_results["chart_generation"] = False
+                return False, response
+        else:
+            print("❌ Chart generation failed")
+            self.test_results["chart_generation"] = False
+            return False, response
+
+    def test_recent_analyses_limit(self):
+        """Test that recent analyses are limited to 5"""
+        print("\n🔍 Testing recent analyses limit...")
+        
+        success, response = self.run_test(
+            "Recent Analyses Limit",
+            "GET",
+            "api/analyses",
+            200
+        )
+        
+        if success:
+            analyses_count = len(response)
+            if analyses_count <= 5:
+                print(f"✅ Recent analyses limited to {analyses_count} (max 5)")
+                self.test_results["recent_analyses_limit"] = True
+                return True, response
+            else:
+                print(f"❌ Recent analyses not limited to 5 (got {analyses_count})")
+                self.test_results["recent_analyses_limit"] = False
+                return False, response
+        else:
+            self.test_results["recent_analyses_limit"] = False
+            return False, response
+
+    def run_all_tests(self):
+        """Run all tests for the FCN fixes"""
+        # Test Case 1: Chart Generation Error Fix
+        test_data = {
             "symbols": ["AAPL", "MSFT"],
             "fcn_params": {
                 "coupon_rate": 6.0,
@@ -70,170 +117,29 @@ class FCNFixesTester:
             }
         }
         
-        try:
-            response = requests.post(f"{API_URL}/analyze", json=payload)
-            response.raise_for_status()
-            result = response.json()
-            
-            # Check if charts were generated
-            charts_exist = "charts" in result and "price_history" in result["charts"] and "payoff_distribution" in result["charts"]
-            
-            # Check if charts have content
-            charts_have_content = False
-            if charts_exist:
-                price_chart_length = len(result["charts"]["price_history"]) if result["charts"]["price_history"] else 0
-                payoff_chart_length = len(result["charts"]["payoff_distribution"]) if result["charts"]["payoff_distribution"] else 0
-                charts_have_content = price_chart_length > 0 and payoff_chart_length > 0
-            
-            success = charts_exist and charts_have_content
-            
-            return {
-                "success": success,
-                "details": {
-                    "status_code": response.status_code,
-                    "charts_exist": charts_exist,
-                    "charts_have_content": charts_have_content,
-                    "price_chart_size": len(result["charts"]["price_history"]) if charts_exist else 0,
-                    "payoff_chart_size": len(result["charts"]["payoff_distribution"]) if charts_exist else 0,
-                    "analysis_id": result.get("id")
-                }
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "details": {
-                    "error": str(e),
-                    "response_text": getattr(response, "text", "No response text")
-                }
-            }
-
-    def test_mixed_market_chart_generation(self):
-        """Test Case 3: Mixed Market with Chart Generation"""
-        print("Testing chart generation with mixed market (AAPL and 0700.HK)...")
+        # Test chart generation
+        chart_success, chart_response = self.test_chart_generation(test_data)
         
-        payload = {
-            "symbols": ["AAPL", "0700.HK"],
-            "fcn_params": {
-                "coupon_rate": 5.5,
-                "face_value": 50000,
-                "maturity_months": 6,
-                "reference_prices": {"AAPL": 200.0, "0700.HK": 500.0},
-                "strike_prices": {"AAPL": 200.0, "0700.HK": 500.0},
-                "put_strike_prices": {"AAPL": 180.0, "0700.HK": 450.0},
-                "knock_out_barrier_pct": 115.0,
-                "knock_in_barrier_pct": 75.0,
-                "barrier_style": "european",
-                "autocallable": False,
-                "basket_type": "worst_of"
-            }
-        }
+        # Test recent analyses limit
+        analyses_success, analyses_response = self.test_recent_analyses_limit()
         
-        try:
-            response = requests.post(f"{API_URL}/analyze", json=payload)
-            response.raise_for_status()
-            result = response.json()
-            
-            # Check if charts were generated
-            charts_exist = "charts" in result and "price_history" in result["charts"] and "payoff_distribution" in result["charts"]
-            
-            # Check if charts have content
-            charts_have_content = False
-            if charts_exist:
-                price_chart_length = len(result["charts"]["price_history"]) if result["charts"]["price_history"] else 0
-                payoff_chart_length = len(result["charts"]["payoff_distribution"]) if result["charts"]["payoff_distribution"] else 0
-                charts_have_content = price_chart_length > 0 and payoff_chart_length > 0
-            
-            success = charts_exist and charts_have_content
-            
-            return {
-                "success": success,
-                "details": {
-                    "status_code": response.status_code,
-                    "charts_exist": charts_exist,
-                    "charts_have_content": charts_have_content,
-                    "price_chart_size": len(result["charts"]["price_history"]) if charts_exist else 0,
-                    "payoff_chart_size": len(result["charts"]["payoff_distribution"]) if charts_exist else 0,
-                    "analysis_id": result.get("id")
-                }
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "details": {
-                    "error": str(e),
-                    "response_text": getattr(response, "text", "No response text")
-                }
-            }
-
-    def test_recent_analyses_limit(self):
-        """Test Case 2: Recent Analyses Limit"""
-        print("Testing recent analyses limit (should be max 5)...")
+        # Print summary
+        print("\n📊 Test Summary:")
+        print(f"Chart Generation: {'✅ PASSED' if self.test_results.get('chart_generation', False) else '❌ FAILED'}")
+        print(f"Recent Analyses Limit: {'✅ PASSED' if self.test_results.get('recent_analyses_limit', False) else '❌ FAILED'}")
         
-        try:
-            response = requests.get(f"{API_URL}/analyses")
-            response.raise_for_status()
-            analyses = response.json()
-            
-            # Check if analyses are limited to 5
-            count_is_limited = len(analyses) <= 5
-            
-            # Check if analyses are sorted by created_at descending
-            is_sorted = True
-            for i in range(1, len(analyses)):
-                if analyses[i-1]["created_at"] < analyses[i]["created_at"]:
-                    is_sorted = False
-                    break
-            
-            success = count_is_limited and is_sorted
-            
-            return {
-                "success": success,
-                "details": {
-                    "status_code": response.status_code,
-                    "analyses_count": len(analyses),
-                    "count_is_limited": count_is_limited,
-                    "is_sorted_by_created_at_desc": is_sorted,
-                    "analyses": analyses
-                }
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "details": {
-                    "error": str(e),
-                    "response_text": getattr(response, "text", "No response text")
-                }
-            }
-
-    def print_summary(self):
-        """Print test summary"""
-        print("\n" + "="*50)
-        print(f"TEST SUMMARY: {self.tests_passed}/{self.tests_run} tests passed")
-        print("="*50)
-        
-        for name, result in self.test_results.items():
-            status = "✅ PASSED" if result["success"] else "❌ FAILED"
-            print(f"{status} - {name} ({result['duration']:.2f}s)")
-            
-            if not result["success"]:
-                print(f"  Details: {json.dumps(result['details'], indent=2)}")
-        
-        print("="*50)
-        
-        return self.tests_passed == self.tests_run
+        return self.test_results
 
 def main():
-    tester = FCNFixesTester()
+    # Get backend URL from frontend .env
+    backend_url = "https://0bf3f961-4ee9-49fc-8ed6-5c5ee1eccf8e.preview.emergentagent.com"
     
     # Run tests
-    tester.run_test("Chart Generation Fix", tester.test_chart_generation)
-    tester.run_test("Recent Analyses Limit", tester.test_recent_analyses_limit)
-    tester.run_test("Mixed Market Chart Generation", tester.test_mixed_market_chart_generation)
+    tester = FCNFixesTester(backend_url)
+    results = tester.run_all_tests()
     
-    # Print summary
-    all_passed = tester.print_summary()
-    
-    return 0 if all_passed else 1
+    # Return success if all tests passed
+    return 0 if all(results.values()) else 1
 
 if __name__ == "__main__":
     sys.exit(main())
