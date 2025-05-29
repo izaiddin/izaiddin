@@ -435,32 +435,62 @@ def create_price_chart(stock_prices: pd.DataFrame) -> str:
     return image_base64
 
 def create_payoff_distribution_chart(monte_carlo_results: Dict) -> str:
-    """Create payoff distribution chart for basket FCN"""
+    """Create payoff distribution chart for basket FCN with error handling"""
     fig, ax = plt.subplots(1, 1, figsize=(10, 6))
     
-    # Create sample distribution for visualization (simplified)
-    expected_payoff = monte_carlo_results['expected_payoff']
-    payoff_std = monte_carlo_results['payoff_std']
-    sample_payoffs = np.random.normal(expected_payoff, payoff_std, 1000)
-    
-    ax.hist(sample_payoffs, bins=50, alpha=0.7, edgecolor='black')
-    ax.axvline(expected_payoff, color='red', linestyle='--', linewidth=2, 
-               label=f'Expected: ${expected_payoff:.2f}')
-    ax.axvline(monte_carlo_results['var_95'], color='orange', linestyle='--', 
-               label=f'VaR 95%: ${monte_carlo_results["var_95"]:.2f}')
-    
-    ax.set_title(f'FCN Payoff Distribution - {monte_carlo_results["basket_type"].replace("_", " ").title()} Basket', 
-                fontsize=14, fontweight='bold')
-    ax.set_xlabel('Payoff ($)', fontsize=12)
-    ax.set_ylabel('Frequency', fontsize=12)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    
-    # Add basket info
-    if monte_carlo_results.get('most_frequent_worst') != "N/A":
-        ax.text(0.02, 0.98, f'Most Frequent Worst Performer: {monte_carlo_results["most_frequent_worst"]}', 
-                transform=ax.transAxes, verticalalignment='top', 
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    try:
+        # Create sample distribution for visualization (simplified)
+        expected_payoff = monte_carlo_results['expected_payoff']
+        payoff_std = monte_carlo_results['payoff_std']
+        
+        # Handle case where std is very small or zero
+        if payoff_std < 1e-6:
+            payoff_std = expected_payoff * 0.01  # Use 1% of expected as minimum std
+        
+        sample_payoffs = np.random.normal(expected_payoff, payoff_std, 1000)
+        
+        # Calculate appropriate number of bins based on data range
+        data_range = sample_payoffs.max() - sample_payoffs.min()
+        if data_range < 1e-6:
+            # If range is too small, create a simple bar chart
+            ax.bar([expected_payoff], [1], width=expected_payoff*0.01, alpha=0.7, edgecolor='black')
+            ax.set_title(f'FCN Payoff - Fixed Value: ${expected_payoff:.2f}', fontsize=14, fontweight='bold')
+        else:
+            # Calculate number of bins dynamically
+            num_bins = min(50, max(10, int(np.sqrt(len(sample_payoffs)))))
+            
+            # Create histogram with dynamic bins
+            n, bins, patches = ax.hist(sample_payoffs, bins=num_bins, alpha=0.7, edgecolor='black')
+            
+            ax.axvline(expected_payoff, color='red', linestyle='--', linewidth=2, 
+                       label=f'Expected: ${expected_payoff:.2f}')
+            ax.axvline(monte_carlo_results['var_95'], color='orange', linestyle='--', 
+                       label=f'VaR 95%: ${monte_carlo_results["var_95"]:.2f}')
+            
+            ax.set_title(f'FCN Payoff Distribution - {monte_carlo_results["basket_type"].replace("_", " ").title()} Basket', 
+                        fontsize=14, fontweight='bold')
+            ax.legend()
+        
+        ax.set_xlabel('Payoff ($)', fontsize=12)
+        ax.set_ylabel('Frequency', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        
+        # Add basket info
+        if monte_carlo_results.get('most_frequent_worst') != "N/A":
+            ax.text(0.02, 0.98, f'Most Frequent Worst Performer: {monte_carlo_results["most_frequent_worst"]}', 
+                    transform=ax.transAxes, verticalalignment='top', 
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        
+    except Exception as e:
+        # Fallback: create a simple text chart if histogram fails
+        ax.text(0.5, 0.5, f'Payoff Distribution\nExpected: ${expected_payoff:.2f}\nStd Dev: ${payoff_std:.2f}', 
+                transform=ax.transAxes, ha='center', va='center', fontsize=12,
+                bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.5))
+        ax.set_title('FCN Payoff Summary', fontsize=14, fontweight='bold')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
     
     plt.tight_layout()
     
