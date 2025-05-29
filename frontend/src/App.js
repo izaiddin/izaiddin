@@ -602,11 +602,43 @@ const FCNCalculator = () => {
                   </div>
 
                   <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Barrier Style</h4>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Basket Type</h4>
                     <p className="text-2xl font-bold text-orange-600 capitalize">
-                      {analysis.request_params.fcn_params.barrier_style}
+                      {analysis.request_params.fcn_params.basket_type.replace('_', '-')}
                     </p>
                   </div>
+                </div>
+
+                {/* Basket Performance Summary */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Basket Performance Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+                      <h4 className="font-semibold text-blue-800 mb-2">Expected Payoff</h4>
+                      <p className="text-2xl font-bold text-blue-600">
+                        ${analysis.risk_metrics.basket_metrics?.expected_payoff?.toFixed(2) || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
+                      <h4 className="font-semibold text-green-800 mb-2">Knock-Out Probability</h4>
+                      <p className="text-2xl font-bold text-green-600">
+                        {analysis.risk_metrics.basket_metrics?.knock_out_probability?.toFixed(2) || 'N/A'}%
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg">
+                      <h4 className="font-semibold text-red-800 mb-2">Knock-In Probability</h4>
+                      <p className="text-2xl font-bold text-red-600">
+                        {analysis.risk_metrics.basket_metrics?.knock_in_probability?.toFixed(2) || 'N/A'}%
+                      </p>
+                    </div>
+                  </div>
+                  {analysis.risk_metrics.basket_metrics?.most_frequent_worst !== "N/A" && (
+                    <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Most Frequent Worst Performer:</strong> {analysis.risk_metrics.basket_metrics.most_frequent_worst}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Stock Information */}
