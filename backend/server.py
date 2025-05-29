@@ -493,9 +493,14 @@ async def get_stock_info(symbol: str):
 async def analyze_fcn(request: FCNAnalysisRequest):
     """Perform comprehensive FCN analysis"""
     try:
+        # Validate basket structure - FCNs typically require exactly 2 stocks
+        if len(request.symbols) < 2:
+            raise HTTPException(status_code=400, detail="FCN requires at least 2 underlying stocks for basket structure")
+        
         # Fetch stock data
         stocks_info = []
         stock_prices = pd.DataFrame()
+        current_prices = {}
         
         for symbol in request.symbols:
             ticker = yf.Ticker(symbol)
@@ -510,6 +515,8 @@ async def analyze_fcn(request: FCNAnalysisRequest):
             
             # Get current stock info
             current_price = hist['Close'].iloc[-1]
+            current_prices[symbol] = current_price
+            
             stock_info = StockInfo(
                 symbol=symbol.upper(),
                 name=info.get('longName', symbol),
@@ -522,53 +529,61 @@ async def analyze_fcn(request: FCNAnalysisRequest):
             )
             stocks_info.append(stock_info)
         
-        # Calculate FCN metrics for each stock
-        fcn_metrics = {}
-        for symbol in request.symbols:
-            current_price = stock_prices[symbol].iloc[-1]
-            
-            metrics = calculate_fcn_metrics(current_price, request.fcn_params)
-            fcn_metrics[symbol] = metrics
+        # Calculate FCN metrics for basket
+        fcn_metrics = calculate_fcn_metrics(current_prices, request.fcn_params)
         
-        # Monte Carlo simulation
+        # Monte Carlo simulation with basket structure
         monte_carlo_results = monte_carlo_simulation(stock_prices, request.fcn_params)
         
-        # Scenario analysis with proper FCN calculations
+        # Scenario analysis with basket structure
         scenario_analysis = {}
         for scenario_name, return_pct in request.scenarios.items():
             scenario_results = {}
+            
+            # Apply scenario return to all stocks in basket based on reference prices
+            future_prices = {}
             for symbol in request.symbols:
-                current_price = stock_prices[symbol].iloc[-1]
-                future_price = request.fcn_params.reference_price * (1 + return_pct)  # Apply scenario to reference price
-                
-                # Calculate barriers for scenario
-                knock_out_barrier = request.fcn_params.reference_price * (request.fcn_params.knock_out_barrier_pct / 100)
-                knock_in_barrier = request.fcn_params.reference_price * (request.fcn_params.knock_in_barrier_pct / 100)
-                
-                # For scenario analysis, assume no early redemption
-                payoff_result = calculate_fcn_payoff(
-                    final_price=future_price,
-                    reference_price=request.fcn_params.reference_price,
-                    strike_price=request.fcn_params.strike_price,
-                    knock_out_barrier_pct=request.fcn_params.knock_out_barrier_pct,
-                    knock_in_barrier_pct=request.fcn_params.knock_in_barrier_pct,
-                    coupon_rate=request.fcn_params.coupon_rate,
-                    face_value=request.fcn_params.face_value,
-                    maturity_months=request.fcn_params.maturity_months,
-                    barrier_breached={
-                        "knock_in": future_price <= knock_in_barrier,
-                        "knock_out": future_price >= knock_out_barrier
-                    },
-                    early_redemption_month=None
-                )
-                
-                scenario_results[symbol] = {
-                    "future_price": future_price,
-                    "payoff": payoff_result["payoff"],
-                    "total_return": payoff_result["total_return"],
-                    "coupons_received": payoff_result["coupons_received"],
-                    "redemption_type": payoff_result["redemption_type"]
-                }
+                ref_price = request.fcn_params.reference_prices.get(symbol, current_prices[symbol])
+                future_prices[symbol] = ref_price * (1 + return_pct)
+            
+            # Calculate barriers for scenario
+            barrier_status = check_basket_barriers(
+                future_prices, request.fcn_params.reference_prices,
+                request.fcn_params.knock_out_barrier_pct, request.fcn_params.knock_in_barrier_pct
+            )
+            
+            # Calculate payoff for scenario
+            payoff_result = calculate_fcn_payoff(
+                final_prices=future_prices,
+                reference_prices=request.fcn_params.reference_prices,
+                strike_prices=request.fcn_params.strike_prices,
+                knock_out_barrier_pct=request.fcn_params.knock_out_barrier_pct,
+                knock_in_barrier_pct=request.fcn_params.knock_in_barrier_pct,
+                coupon_rate=request.fcn_params.coupon_rate,
+                face_value=request.fcn_params.face_value,
+                maturity_months=request.fcn_params.maturity_months,
+                barrier_breached={
+                    "knock_in": barrier_status["knocked_in"],
+                    "knock_out": barrier_status["knocked_out"]
+                },
+                basket_type=request.fcn_params.basket_type,
+                early_redemption_month=None
+            )
+            
+            # Calculate basket performance for scenario
+            basket_perf = calculate_basket_performance(
+                future_prices, request.fcn_params.reference_prices, request.fcn_params.basket_type
+            )
+            
+            scenario_results = {
+                "basket_performance": basket_perf["performance"],
+                "worst_performer": basket_perf.get("worst_symbol", "N/A"),
+                "payoff": payoff_result["payoff"],
+                "total_return": payoff_result["total_return"],
+                "coupons_received": payoff_result["coupons_received"],
+                "redemption_type": payoff_result["redemption_type"],
+                "individual_performances": basket_perf["all_performances"]
+            }
             
             scenario_analysis[scenario_name] = scenario_results
         
